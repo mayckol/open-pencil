@@ -156,7 +156,7 @@
   "cloudAIWorkspacesFailed": "OpenPencil Cloud n’a pas pu vérifier lesquels de vos espaces de travail incluent l’IA. Vérifiez votre connexion et réessayez.",
   "chatCloudCreditsExhausted": "Cet espace de travail a utilisé les crédits d’IA de ce mois. Gérez son abonnement pour en ajouter.",
   "chatCloudAllowanceUsed": "Cet espace de travail a utilisé l’allocation d’IA de ce mois. Demandez à l’administration de votre Cloud de l’augmenter.",
-  "chatCloudAllowanceUsedUntil": "Cet espace de travail a utilisé son allocation d’IA jusqu’au {date}. Demandez à l’administration de votre Cloud de l’augmenter.",
+  "chatCloudAllowanceUsedUntil": "Cet espace de travail a utilisé l’allocation d’IA de ce mois. Elle est renouvelée le {date}. Demandez à l’administration de votre Cloud de l’augmenter d’ici là.",
   "connectionTestCloudCreditsExhausted": "Cet espace de travail n’a plus de crédits d’IA ce mois-ci.",
   "cloudCreditsLeft": "Crédits restants : {credits}",
   "cloudCreditsRenew": "Renouvelé le {date}",

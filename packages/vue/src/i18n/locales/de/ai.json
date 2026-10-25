@@ -156,7 +156,7 @@
   "cloudAIWorkspacesFailed": "OpenPencil Cloud konnte nicht prüfen, welche deiner Arbeitsbereiche KI enthalten. Prüfe deine Verbindung und versuche es erneut.",
   "chatCloudCreditsExhausted": "Dieser Arbeitsbereich hat das KI-Guthaben dieses Monats verbraucht. Verwalte seinen Tarif, um mehr hinzuzufügen.",
   "chatCloudAllowanceUsed": "Dieser Arbeitsbereich hat das KI-Kontingent dieses Monats verbraucht. Bitte deine Cloud-Administration, es zu erhöhen.",
-  "chatCloudAllowanceUsedUntil": "Dieser Arbeitsbereich hat sein KI-Kontingent bis {date} verbraucht. Bitte deine Cloud-Administration, es zu erhöhen.",
+  "chatCloudAllowanceUsedUntil": "Dieser Arbeitsbereich hat das KI-Kontingent dieses Monats verbraucht. Es erneuert sich am {date}. Bitte deine Cloud-Administration, es früher zu erhöhen.",
   "connectionTestCloudCreditsExhausted": "Dieser Arbeitsbereich hat diesen Monat kein KI-Guthaben mehr.",
   "cloudCreditsLeft": "Verbleibendes Guthaben: {credits}",
   "cloudCreditsRenew": "Erneuert sich am {date}",

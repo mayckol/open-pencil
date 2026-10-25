@@ -162,7 +162,7 @@
   "cloudAIWorkspacesFailed": "OpenPencil Cloud 无法确认你的哪些工作区包含 AI。请检查网络连接后重试。",
   "chatCloudCreditsExhausted": "此工作区已用完本月的 AI 额度。请管理其方案以增加额度。",
   "chatCloudAllowanceUsed": "此工作区已用完本月的 AI 配额。请联系 Cloud 管理员提高配额。",
-  "chatCloudAllowanceUsedUntil": "此工作区的 AI 配额已用完，将于 {date} 恢复。请联系 Cloud 管理员提高配额。",
+  "chatCloudAllowanceUsedUntil": "此工作区已用完本月的 AI 配额，将于 {date} 续期。如需提前增加，请联系 Cloud 管理员。",
   "connectionTestCloudCreditsExhausted": "此工作区本月已没有 AI 额度。",
   "cloudCreditsLeft": "剩余额度：{credits}",
   "cloudCreditsRenew": "将于 {date} 续期",

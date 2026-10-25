@@ -162,7 +162,7 @@
   "cloudAIWorkspacesFailed": "OpenPencil Cloud で AI を含むワークスペースを確認できませんでした。接続を確認して、もう一度お試しください。",
   "chatCloudCreditsExhausted": "このワークスペースは今月の AI クレジットを使い切りました。追加するにはプランを管理してください。",
   "chatCloudAllowanceUsed": "このワークスペースは今月の AI 割り当てを使い切りました。増やすには Cloud の管理者に依頼してください。",
-  "chatCloudAllowanceUsedUntil": "このワークスペースは {date} まで AI 割り当てを使い切りました。増やすには Cloud の管理者に依頼してください。",
+  "chatCloudAllowanceUsedUntil": "このワークスペースは今月の AI 割り当てを使い切りました。{date} に更新されます。それより早く増やすには Cloud の管理者に依頼してください。",
   "connectionTestCloudCreditsExhausted": "このワークスペースには今月の AI クレジットが残っていません。",
   "cloudCreditsLeft": "残りクレジット: {credits}",
   "cloudCreditsRenew": "{date} に更新",

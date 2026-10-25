@@ -225,7 +225,7 @@ export const aiMessageDefaults = {
   chatCloudAllowanceUsed:
     'This workspace has used this month’s AI allowance. Ask your Cloud administrator to raise it.',
   chatCloudAllowanceUsedUntil: params(
-    'This workspace has used its AI allowance until {date}. Ask your Cloud administrator to raise it.'
+    'This workspace has used this month’s AI allowance. It renews on {date}. Ask your Cloud administrator to raise it sooner.'
   ),
   connectionTestCloudCreditsExhausted: 'This workspace has no AI credits left this month.',
   cloudCreditsLeft: params('{credits} credits left'),

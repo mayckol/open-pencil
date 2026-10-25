@@ -156,7 +156,7 @@
   "cloudAIWorkspacesFailed": "OpenPencil Cloud nie może sprawdzić, które z Twoich obszarów roboczych obejmują AI. Sprawdź połączenie i spróbuj ponownie.",
   "chatCloudCreditsExhausted": "Ten obszar roboczy wykorzystał kredyty AI na ten miesiąc. Zarządzaj jego planem, aby dodać więcej.",
   "chatCloudAllowanceUsed": "Ten obszar roboczy wykorzystał przydział AI na ten miesiąc. Poproś administratora swojej chmury Cloud o jego zwiększenie.",
-  "chatCloudAllowanceUsedUntil": "Ten obszar roboczy wykorzystał przydział AI do {date}. Poproś administratora swojej chmury Cloud o jego zwiększenie.",
+  "chatCloudAllowanceUsedUntil": "Ten obszar roboczy wykorzystał przydział AI na ten miesiąc. Odnowi się {date}. Poproś administratora swojej chmury Cloud, aby zwiększył go wcześniej.",
   "connectionTestCloudCreditsExhausted": "Ten obszar roboczy nie ma już kredytów AI w tym miesiącu.",
   "cloudCreditsLeft": "Pozostało kredytów: {credits}",
   "cloudCreditsRenew": "Odnawia się {date}",
