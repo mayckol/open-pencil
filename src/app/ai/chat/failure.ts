@@ -17,6 +17,8 @@ export type AIChatFailure = {
   detail?: string
   statusCode?: number
   retryable?: boolean
+  /** With `insufficient-credit` from Cloud's AI service: when the allowance renews. */
+  resetsAt?: string
 }
 
 export type ProviderErrorShape = {

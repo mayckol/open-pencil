@@ -30,6 +30,7 @@ export type ProviderConnectionTestFailureReason =
   | 'browser-network'
   | 'network'
   | 'cloud-unavailable'
+  | 'cloud-credits-exhausted'
   | 'unknown'
 
 function isCompatibleProvider(providerID: ModelConfig['providerID']): boolean {

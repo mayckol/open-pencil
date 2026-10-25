@@ -18,6 +18,7 @@ import { OPENPENCIL_AI_PROVIDER } from '@/app/ai/providers/openpencil/provider'
 import { didHitStepLimit } from '@/app/ai/tools'
 import { cloudBillingURL } from '@/app/cloud/integration'
 import { getActiveEditorStore } from '@/app/editor/active-store'
+import { useDateFormat } from '@/app/i18n/date'
 import { openSettingsDialog } from '@/app/settings/dialog'
 import { openExternalLink, toast } from '@/app/shell/ui'
 import { activeTab } from '@/app/tabs'
@@ -32,6 +33,7 @@ import ProviderSetup from '@/components/chat/ProviderSetup.vue'
 
 const { isConfigured, ensureChat, history, chatFailure, clearChatFailure } = useAIChat()
 const { ai } = useI18n()
+const dates = useDateFormat()
 const runLocation = useChatRunLocation()
 
 const chat = shallowRef<Chat<UIMessage> | null>(null)
@@ -128,6 +130,15 @@ async function saveTrace(id: string) {
   }
 }
 
+/**
+ * A Cloud that bills sells more credits; a self-hosted one has only the allowance its
+ * administrator set, which renews or is raised.
+ */
+function cloudCreditsMessage(resetsAt: string | undefined): string {
+  if (cloudBillingURL.value) return ai.value.chatCloudCreditsExhausted
+  if (!resetsAt) return ai.value.chatCloudAllowanceUsed
+  return ai.value.chatCloudAllowanceUsedUntil({ date: dates.format(resetsAt, 'dayTime') })
+}
 const failureMessage = computed(() => {
   switch (chatFailure.value?.reason) {
     case 'authentication':
@@ -136,7 +147,7 @@ const failureMessage = computed(() => {
       return ai.value.chatForbidden
     case 'insufficient-credit':
       return providerID.value === OPENPENCIL_AI_PROVIDER
-        ? ai.value.chatCloudCreditsExhausted
+        ? cloudCreditsMessage(chatFailure.value.resetsAt)
         : ai.value.chatInsufficientCredit
     case 'model-not-found':
       return ai.value.chatModelNotFound

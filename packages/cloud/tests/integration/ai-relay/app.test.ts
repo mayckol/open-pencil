@@ -219,7 +219,7 @@ describe('AI relay', () => {
     expect(usage.entries).toEqual([])
   })
 
-  test('asks a streamed completion for usage and charges it after the stream ends', async () => {
+  test('asks a streamed completion for usage and charges it before the answer ends', async () => {
     const context = await relay(
       () =>
         new Response(
@@ -239,8 +239,12 @@ describe('AI relay', () => {
     })
     expect(response.headers.get('Content-Type')).toBe('text/event-stream')
     expect(context.calls[0]?.body.stream_options).toEqual({ include_usage: true })
+    // The charge is recorded before the answer ends, so a wallet read after it includes it.
+    const order: string[] = []
+    void Promise.all(context.settled).then(() => order.push('charged'))
     expect(await response.text()).toContain('"content":"Hi"')
-    await Promise.all(context.settled)
+    order.push('answered')
+    expect(order).toEqual(['charged', 'answered'])
     const wallet = await responseJSON(
       await context.request(CLOUD_AI_API_PATHS.wallet, bearer),
       aiWalletSchema
@@ -262,7 +266,11 @@ describe('AI relay', () => {
     await Promise.all(context.settled)
     const exhausted = await context.complete(bearer, { model: MODEL })
     expect(exhausted.status).toBe(402)
-    expect((await responseJSON(exhausted, aiErrorSchema)).error.code).toBe('insufficient_credits')
+    // It says when the allowance renews, so the editor need not guess the relay's period.
+    expect((await responseJSON(exhausted, aiErrorSchema)).error).toEqual({
+      code: 'insufficient_credits',
+      resetsAt: '2026-11-01T00:00:00.000Z'
+    })
     expect(context.calls).toHaveLength(1)
 
     // Another workspace, and one without an allowance, are unaffected.
