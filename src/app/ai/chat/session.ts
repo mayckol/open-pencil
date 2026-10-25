@@ -12,7 +12,7 @@ import SYSTEM_PROMPT from '@/app/ai/chat/system-prompt'
 import { chatThinkingLevel } from '@/app/ai/chat/thinking'
 import { createAIModelRuntime, resolveModelConnectionAPIKey } from '@/app/ai/models'
 import { resolveLanguageModelID } from '@/app/ai/models/language-model'
-import { cloudCreditsResetAt } from '@/app/ai/providers/openpencil/failure'
+import { cloudCreditRefusal } from '@/app/ai/providers/openpencil/failure'
 import { OPENPENCIL_AI_PROVIDER } from '@/app/ai/providers/openpencil/provider'
 import { settleMessage } from '@/app/ai/reply/settle'
 import { currentRun } from '@/app/ai/tools'
@@ -269,9 +269,15 @@ export function createChatSessionManager({
             (provider) => provider.id === providerID.value && provider.signInOnly
           )
           const classified = classifyAIChatError(reportedError, { signInOnly })
-          const resetsAt =
-            providerID.value === OPENPENCIL_AI_PROVIDER ? cloudCreditsResetAt(reportedError) : null
-          failure.value = resetsAt ? { ...classified, resetsAt } : classified
+          const refusal =
+            providerID.value === OPENPENCIL_AI_PROVIDER ? cloudCreditRefusal(reportedError) : null
+          failure.value = refusal
+            ? {
+                ...classified,
+                reason: 'cloud-credits-exhausted',
+                resetsAt: refusal.resetsAt ?? undefined
+              }
+            : classified
           const { errorName, errorCode, message, stack } = diagnosticErrorDetails(reportedError)
           recordChatFailed({ errorName, errorCode, message, stack }, diagnosticContext)
         },

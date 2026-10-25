@@ -9,6 +9,9 @@ import {
   routeCloudAI
 } from '#tests/helpers/cloud/ai'
 
+/** A balance of exactly zero, however the label words it. */
+const NO_CREDITS = /^\D*\b0\b\D*$/
+
 test.use({
   storageState: async ({ baseURL }, use) => {
     if (!baseURL) throw new Error('Browser test baseURL is required')
@@ -83,7 +86,7 @@ test('a self-hosted allowance that runs out offers nothing to buy', async ({ pag
   const { chat, credits, toast } = await openCloudChat(page, baseURL, { allowance: 300 })
   await chat.submit('Say hello')
   await expect(chat.assistantMessage()).toContainText(CLOUD_AI_REPLY)
-  await expect(credits).toContainText('0')
+  await expect(credits).toHaveText(NO_CREDITS)
   await expect(credits).not.toHaveRole('button')
 
   await chat.submit('Say hello again')
@@ -99,7 +102,7 @@ test('a Cloud that bills offers its plan once the credits run out', async ({ pag
   })
   await chat.submit('Say hello')
   await expect(chat.assistantMessage()).toContainText(CLOUD_AI_REPLY)
-  await expect(credits).toContainText('0')
+  await expect(credits).toHaveText(NO_CREDITS)
   await expect(credits).toHaveRole('button')
 
   await chat.submit('Say hello again')

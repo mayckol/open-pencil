@@ -25,11 +25,7 @@ async function testCloudConnection(
   const client = cloudAIClient(target.cloudWorkspaceId ?? '')
   if (!client) return { ok: false, reason: 'cloud-unavailable' }
   const cloud = cloudModelConfig(client, target.modelID)
-  const result = await testProviderConnection(cloud.config, cloud.runtime)
-  // The workspace's plan holds the credits, not a provider account to top up.
-  return !result.ok && result.reason === 'insufficient-credit'
-    ? { ok: false, reason: 'cloud-credits-exhausted' }
-    : result
+  return testProviderConnection(cloud.config, cloud.runtime)
 }
 
 interface ConnectionOptions {

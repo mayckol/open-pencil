@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test'
 import { createCloudAIClient } from '@open-pencil/cloud/client'
 
 import { createLanguageModel } from '@/app/ai/models/language-model'
-import { cloudCreditsResetAt } from '@/app/ai/providers/openpencil/failure'
+import { cloudCreditRefusal } from '@/app/ai/providers/openpencil/failure'
 import { cloudModelConfig } from '@/app/ai/providers/openpencil/model'
 
 /** What a model request fails with when the service answers `status` with `body`. */
@@ -24,25 +24,34 @@ async function modelFailure(status: number, body: unknown): Promise<unknown> {
   throw new Error('The request did not fail')
 }
 
-describe('cloudCreditsResetAt', () => {
+describe('cloudCreditRefusal', () => {
   test('reads when the allowance renews from the service’s refusal', async () => {
     const error = await modelFailure(402, {
       error: { code: 'insufficient_credits', resetsAt: '2026-11-01T00:00:00.000Z' }
     })
-    expect(cloudCreditsResetAt(error)).toBe('2026-11-01T00:00:00.000Z')
+    expect(cloudCreditRefusal(error)).toEqual({ resetsAt: '2026-11-01T00:00:00.000Z' })
   })
 
-  test('is unknown when the service does not say, or refused for another reason', async () => {
+  test('is a refusal without a renewal when the service does not say when', async () => {
     expect(
-      cloudCreditsResetAt(await modelFailure(402, { error: { code: 'insufficient_credits' } }))
+      cloudCreditRefusal(await modelFailure(402, { error: { code: 'insufficient_credits' } }))
+    ).toEqual({ resetsAt: null })
+  })
+
+  test('is not one for an upstream’s own 402 or another refusal', async () => {
+    // OpenRouter's answer when the service's own key is out of credits, passed through.
+    expect(
+      cloudCreditRefusal(
+        await modelFailure(402, { error: { code: 402, message: 'Insufficient credits' } })
+      )
     ).toBeNull()
     expect(
-      cloudCreditsResetAt(
+      cloudCreditRefusal(
         await modelFailure(429, {
           error: { code: 'rate_limited', resetsAt: '2026-11-01T00:00:00.000Z' }
         })
       )
     ).toBeNull()
-    expect(cloudCreditsResetAt(new Error('offline'))).toBeNull()
+    expect(cloudCreditRefusal(new Error('offline'))).toBeNull()
   })
 })
