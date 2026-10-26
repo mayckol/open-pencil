@@ -5,10 +5,11 @@ import {
   countEachFilter,
   listSearch,
   listWindow,
-  type AdminListQuery
+  type AdminListQuery,
+  type ListFilters
 } from '#cloud/admin/list'
 import { cloudAdminEmailFilterSchema, type CloudAdminEmailFilter } from '#cloud/contract'
-import type { CloudDatabase, TransactionalEmailStatus } from '#cloud/server/db'
+import type { CloudDatabase } from '#cloud/server/db'
 import type { TransactionalEmailService } from '#cloud/server/email'
 import type { Kysely } from 'kysely'
 
@@ -20,12 +21,12 @@ const ENROLLMENT_MESSAGE_STATUS: Partial<Record<string, EnrollmentStatus>> = {
   'enrollment-revoked': 'revoked'
 }
 
-/** The delivery states each filter shows; every message is under `all`. */
-const FILTER_STATUSES: Record<CloudAdminEmailFilter, readonly TransactionalEmailStatus[] | null> = {
-  all: null,
-  sent: ['accepted'],
-  waiting: ['pending', 'sending'],
-  failed: ['failed']
+/** Messages by how their delivery went; every message is under `all`. */
+const FILTERS: ListFilters<CloudAdminEmailFilter, 'transactionalEmail'> = {
+  all: (expression) => expression.lit(true),
+  sent: (expression) => expression('status', '=', 'accepted'),
+  waiting: (expression) => expression('status', 'in', ['pending', 'sending']),
+  failed: (expression) => expression('status', '=', 'failed')
 }
 
 export function createAdminEmailService(
@@ -39,17 +40,13 @@ export function createAdminEmailService(
       const search = listSearch(query)
       const filter = query.filter ?? 'all'
       const { limit, offset } = listWindow(query)
-      const matching = (target: CloudAdminEmailFilter) => {
-        let selection = database.selectFrom('transactionalEmail')
-        const statuses = FILTER_STATUSES[target]
-        if (statuses) selection = selection.where('status', 'in', statuses)
-        if (search) {
-          selection = selection.where('recipientEmailNormalized', 'ilike', containsPattern(search))
-        }
-        return selection
+      let searched = database.selectFrom('transactionalEmail')
+      if (search) {
+        searched = searched.where('recipientEmailNormalized', 'ilike', containsPattern(search))
       }
-      const counts = await countEachFilter(cloudAdminEmailFilterSchema.options, matching)
-      const rows = await matching(filter)
+      const counts = await countEachFilter(searched, cloudAdminEmailFilterSchema.options, FILTERS)
+      const rows = await searched
+        .where(FILTERS[filter])
         .select([
           'id',
           'kind',

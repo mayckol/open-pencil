@@ -3,7 +3,8 @@ import {
   countEachFilter,
   listSearch,
   listWindow,
-  type AdminListQuery
+  type AdminListQuery,
+  type ListFilters
 } from '#cloud/admin/list'
 import { isUUID } from '#cloud/admin/schema'
 import { cloudAdminAuditFilterSchema, type CloudAdminAuditFilter } from '#cloud/contract'
@@ -11,12 +12,12 @@ import type { CloudDatabase } from '#cloud/server/db'
 import { uniq } from 'es-toolkit'
 import type { ExpressionBuilder, Kysely } from 'kysely'
 
-/** The subject each filter shows; every event is under `all`. */
-const FILTER_SUBJECTS: Record<CloudAdminAuditFilter, string | null> = {
-  all: null,
-  accounts: 'user',
-  requests: 'enrollment',
-  email: 'transactional-email'
+/** Events by what they are about; every event is under `all`. */
+const FILTERS: ListFilters<CloudAdminAuditFilter, 'adminAuditEvent'> = {
+  all: (expression) => expression.lit(true),
+  accounts: (expression) => expression('adminAuditEvent.subjectType', '=', 'user'),
+  requests: (expression) => expression('adminAuditEvent.subjectType', '=', 'enrollment'),
+  email: (expression) => expression('adminAuditEvent.subjectType', '=', 'transactional-email')
 }
 
 type AuditExpression = ExpressionBuilder<CloudDatabase, 'adminAuditEvent'>
@@ -75,15 +76,11 @@ export function createAdminAuditService(database: Kysely<CloudDatabase>) {
       const search = listSearch(query)
       const filter = query.filter ?? 'all'
       const { limit, offset } = listWindow(query)
-      const matching = (target: CloudAdminAuditFilter) => {
-        let selection = database.selectFrom('adminAuditEvent')
-        const subject = FILTER_SUBJECTS[target]
-        if (subject) selection = selection.where('adminAuditEvent.subjectType', '=', subject)
-        if (search) selection = selection.where(searchCondition(containsPattern(search)))
-        return selection
-      }
-      const counts = await countEachFilter(cloudAdminAuditFilterSchema.options, matching)
-      const events = await matching(filter)
+      let searched = database.selectFrom('adminAuditEvent')
+      if (search) searched = searched.where(searchCondition(containsPattern(search)))
+      const counts = await countEachFilter(searched, cloudAdminAuditFilterSchema.options, FILTERS)
+      const events = await searched
+        .where(FILTERS[filter])
         .selectAll()
         .orderBy('createdAt', 'desc')
         .orderBy('id', 'desc')

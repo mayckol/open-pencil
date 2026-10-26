@@ -208,7 +208,7 @@ either role: the first operator is approved and promoted through the `admin` com
 
 The console's lists are tables the server pages, searches, and filters: each admin list endpoint
 takes `search`, `filter`, `limit`, and `offset` and answers with its rows, the `total` matching, and
-how many match the search under each filter (`src/admin/list.ts`). People lists accounts in sign-up
+how many match the search under each filter (`src/admin/list.ts`). A list declares its filters once, as conditions on its table; one query counts them all with `count(*) filter (where …)`, and the page uses the same condition. People lists accounts in sign-up
 order, searched by name or email and filtered to administrators, suspended accounts, or accounts
 without two-step sign-in; access requests are searched by name or email in each status; email by
 recipient and delivery; activity by the names of who acted and whom it was about, and by what it

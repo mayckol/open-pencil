@@ -4,7 +4,8 @@ import {
   countEachFilter,
   listSearch,
   listWindow,
-  type AdminListQuery
+  type AdminListQuery,
+  type ListFilters
 } from '#cloud/admin/list'
 import { isUUID } from '#cloud/admin/schema'
 import { enrollmentStatusSchema } from '#cloud/contract'
@@ -57,6 +58,14 @@ const ALLOWED_TRANSITIONS: Record<EnrollmentStatus, ReadonlySet<EnrollmentStatus
   approved: new Set(['revoked']),
   rejected: new Set(['pending', 'approved']),
   revoked: new Set(['pending', 'approved'])
+}
+
+/** Requests by their status; each is in exactly one. */
+const FILTERS: ListFilters<EnrollmentStatus, 'enrollment'> = {
+  pending: (expression) => expression('status', '=', 'pending'),
+  approved: (expression) => expression('status', '=', 'approved'),
+  rejected: (expression) => expression('status', '=', 'rejected'),
+  revoked: (expression) => expression('status', '=', 'revoked')
 }
 
 function dateString(value: Date | string | null): string | null {
@@ -152,21 +161,19 @@ export function createEnrollmentService(
       const search = listSearch(query)
       const status = query.filter ?? 'pending'
       const { limit, offset } = listWindow(query)
-      const matching = (target: EnrollmentStatus) => {
-        let selection = database.selectFrom('enrollment').where('status', '=', target)
-        if (search) {
-          const pattern = containsPattern(search)
-          selection = selection.where((expression) =>
-            expression.or([
-              expression('name', 'ilike', pattern),
-              expression('emailNormalized', 'ilike', pattern)
-            ])
-          )
-        }
-        return selection
+      let searched = database.selectFrom('enrollment')
+      if (search) {
+        const pattern = containsPattern(search)
+        searched = searched.where((expression) =>
+          expression.or([
+            expression('name', 'ilike', pattern),
+            expression('emailNormalized', 'ilike', pattern)
+          ])
+        )
       }
-      const counts = await countEachFilter(enrollmentStatusSchema.options, matching)
-      const rows = await matching(status)
+      const counts = await countEachFilter(searched, enrollmentStatusSchema.options, FILTERS)
+      const rows = await searched
+        .where(FILTERS[status])
         .selectAll()
         .orderBy('requestedAt', 'desc')
         .orderBy('id', 'desc')

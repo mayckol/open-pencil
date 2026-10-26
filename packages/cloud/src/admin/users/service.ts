@@ -4,9 +4,15 @@ import {
   countEachFilter,
   listSearch,
   listWindow,
-  type AdminListQuery
+  type AdminListQuery,
+  type ListFilters
 } from '#cloud/admin/list'
-import type { CloudAdminUser, CloudAdminUserDetail, CloudAdminUserFilter } from '#cloud/contract'
+import {
+  cloudAdminUserFilterSchema,
+  type CloudAdminUser,
+  type CloudAdminUserDetail,
+  type CloudAdminUserFilter
+} from '#cloud/contract'
 import {
   createSignInActivity,
   type AuthenticationEmailService,
@@ -21,8 +27,6 @@ import type { ExpressionBuilder, Kysely } from 'kysely'
 /** The sign-ins a person's page lists. */
 const DETAIL_SIGN_INS = 20
 
-const FILTERS = ['all', 'administrators', 'suspended', 'without-two-step'] as const
-
 type UserExpression = ExpressionBuilder<CloudDatabase, 'user'>
 
 /** A search for part of a name or email, matched literally and without case. */
@@ -35,26 +39,23 @@ function searchCondition(search: string) {
     ])
 }
 
-function filterCondition(filter: CloudAdminUserFilter) {
-  return (expression: UserExpression) => {
-    if (filter === 'administrators') return expression('user.role', '=', 'admin')
-    if (filter === 'suspended') return expression('user.banned', '=', true)
-    if (filter === 'without-two-step') {
-      return expression.and([
-        // Better Auth leaves the flag unset on accounts that never turned it on.
-        expression('user.twoFactorEnabled', 'is not', true),
-        expression.not(
-          expression.exists(
-            expression
-              .selectFrom('passkey')
-              .select('passkey.id')
-              .whereRef('passkey.userId', '=', 'user.id')
-          )
+const FILTERS: ListFilters<CloudAdminUserFilter, 'user'> = {
+  all: (expression) => expression.lit(true),
+  administrators: (expression) => expression('user.role', '=', 'admin'),
+  suspended: (expression) => expression('user.banned', '=', true),
+  'without-two-step': (expression) =>
+    expression.and([
+      // Better Auth leaves the flag unset on accounts that never turned it on.
+      expression('user.twoFactorEnabled', 'is not', true),
+      expression.not(
+        expression.exists(
+          expression
+            .selectFrom('passkey')
+            .select('passkey.id')
+            .whereRef('passkey.userId', '=', 'user.id')
         )
-      ])
-    }
-    return expression.lit(true)
-  }
+      )
+    ])
 }
 
 export type AdminUserQuery = AdminListQuery<CloudAdminUserFilter>
@@ -191,13 +192,11 @@ export function createAdminUserService(
       const search = listSearch(query)
       const filter = query.filter ?? 'all'
       const { limit, offset } = listWindow(query)
-      const matching = (target: CloudAdminUserFilter) => {
-        let selection = database.selectFrom('user').where(filterCondition(target))
-        if (search) selection = selection.where(searchCondition(search))
-        return selection
-      }
-      const counts = await countEachFilter(FILTERS, matching)
-      const rows = await matching(filter)
+      let searched = database.selectFrom('user')
+      if (search) searched = searched.where(searchCondition(search))
+      const counts = await countEachFilter(searched, cloudAdminUserFilterSchema.options, FILTERS)
+      const rows = await searched
+        .where(FILTERS[filter])
         .select(userColumns)
         .orderBy('user.createdAt')
         .orderBy('user.id')
