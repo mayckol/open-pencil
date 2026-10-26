@@ -9,8 +9,8 @@ import AppTextarea from '@/components/ui/input/AppTextarea.vue'
 import { useHeldContent } from '@/components/ui/overlay/held'
 import { portalForm } from '@/theme/cloud-portal/form'
 
+import PortalRowMenu from '../table/PortalRowMenu.vue'
 import type { PortalPerson, PortalPersonAction } from '../types'
-import PortalRowMenu from './PortalRowMenu.vue'
 
 /**
  * What an administrator can do to an account, in a menu, each asked once more before it happens;

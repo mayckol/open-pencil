@@ -1,7 +1,7 @@
 import { tv } from 'tailwind-variants'
 
 /** What console tables put in their cells and above them. */
-export const portalList = tv({
+export const portalTable = tv({
   slots: {
     toolbar: 'flex flex-wrap items-center gap-2',
     title: 'flex min-w-0 items-center gap-1.5 truncate text-xs font-medium text-surface',

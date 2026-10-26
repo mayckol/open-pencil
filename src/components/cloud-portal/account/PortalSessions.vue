@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { createColumnHelper } from '@tanstack/vue-table'
-import { computed, ref } from 'vue'
+import { computed, h, ref, type Component } from 'vue'
+import IconAppWindow from '~icons/lucide/app-window'
+import IconGlobe from '~icons/lucide/globe'
+import IconLogIn from '~icons/lucide/log-in'
 
 import { useCloudPortalMessages } from '@open-pencil/vue/i18n'
 
@@ -9,11 +12,10 @@ import { usePortalRows, type PortalTableFeatures } from '@/app/cloud-portal/list
 import SettingsSection from '@/components/settings/layout/SettingsSection.vue'
 import AppButton from '@/components/ui/button/AppButton.vue'
 import AppConfirmationDialog from '@/components/ui/dialog/AppConfirmationDialog.vue'
-import AppBadge from '@/components/ui/feedback/AppBadge.vue'
 import { useHeldContent } from '@/components/ui/overlay/held'
 import AppDataTable from '@/components/ui/table/AppDataTable.vue'
-import { portalList } from '@/theme/cloud-portal/list'
 
+import PortalTextCell from '../table/PortalTextCell.vue'
 import type { PortalDevice, PortalSession, PortalSignIn } from '../types'
 
 /**
@@ -38,7 +40,6 @@ const {
 }>()
 const emit = defineEmits<{ revoke: [sessionId: string]; revokeOthers: [] }>()
 
-const ui = portalList()
 const messages = useCloudPortalMessages()
 const labels = usePortalDeviceLabels()
 const others = computed(() => sessions.filter((session) => !session.current))
@@ -66,43 +67,75 @@ const signedInWith = (device: PortalDevice) =>
 
 const address = {
   header: () => messages.value.columnAddress,
-  meta: { class: 'hidden w-36 whitespace-nowrap text-muted tabular-nums @xl/data-table:table-cell' }
+  meta: { class: 'hidden w-36 whitespace-nowrap text-muted tabular-nums @xl/table:table-cell' }
 }
+/** A device a session or sign-in came from, with how it signed in under it. */
+function device(entry: PortalDevice, icon: Component, current = false) {
+  return h(PortalTextCell, {
+    icon,
+    text: labels.device(entry),
+    strong: true,
+    badge: current ? messages.value.thisSession : null,
+    detail: signedInWith(entry)
+  })
+}
+
 const sessionColumn = createColumnHelper<PortalTableFeatures, PortalSession>()
 const sessionTable = usePortalRows(() => sessions, {
   rowId: (session) => session.id,
-  columns: [
-    sessionColumn.display({ id: 'device', header: () => messages.value.columnDevice }),
-    sessionColumn.display({ id: 'address', ...address }),
+  columns: sessionColumn.columns([
     sessionColumn.display({
-      id: 'signedIn',
-      header: () => messages.value.columnSignedIn,
-      meta: { class: 'hidden w-32 whitespace-nowrap text-muted @2xl/data-table:table-cell' }
+      id: 'device',
+      header: () => messages.value.columnDevice,
+      cell: ({ row: { original: session } }) =>
+        device(session, session.method === 'desktop' ? IconAppWindow : IconGlobe, session.current)
     }),
-    sessionColumn.display({
-      id: 'lastActive',
+    sessionColumn.accessor('ipAddress', { id: 'address', ...address }),
+    sessionColumn.accessor('signedInOn', {
+      header: () => messages.value.columnSignedIn,
+      meta: { class: 'hidden w-32 whitespace-nowrap text-muted @2xl/table:table-cell' }
+    }),
+    sessionColumn.accessor('lastActive', {
       header: () => messages.value.columnLastActive,
       meta: { class: 'w-32 whitespace-nowrap text-muted' }
     }),
     sessionColumn.display({
       id: 'actions',
       header: () => messages.value.columnActions,
-      meta: { class: 'w-px text-right', headerHidden: true }
+      meta: { class: 'w-px text-right', headerHidden: true },
+      cell: ({ row: { original: session } }) =>
+        session.current
+          ? null
+          : h(
+              AppButton,
+              {
+                size: 'sm',
+                variant: 'ghost',
+                disabled: busy,
+                onClick: () => {
+                  confirming.value = { kind: 'one', session }
+                }
+              },
+              () => messages.value.signOut
+            )
     })
-  ]
+  ])
 })
 const signInColumn = createColumnHelper<PortalTableFeatures, PortalSignIn>()
 const signInTable = usePortalRows(() => signIns, {
   rowId: (signIn) => signIn.id,
-  columns: [
-    signInColumn.display({ id: 'device', header: () => messages.value.columnDevice }),
-    signInColumn.display({ id: 'address', ...address }),
+  columns: signInColumn.columns([
     signInColumn.display({
-      id: 'when',
+      id: 'device',
+      header: () => messages.value.columnDevice,
+      cell: ({ row: { original: signIn } }) => device(signIn, IconLogIn)
+    }),
+    signInColumn.accessor('ipAddress', { id: 'address', ...address }),
+    signInColumn.accessor('when', {
       header: () => messages.value.columnWhen,
       meta: { class: 'w-44 whitespace-nowrap text-muted' }
     })
-  ]
+  ])
 })
 
 function confirm() {
@@ -134,36 +167,6 @@ function confirm() {
         :loading="loading"
         :hidden="manage ? [] : ['actions']"
       >
-        <template #device="{ row: session }">
-          <div class="flex min-w-0 items-center gap-3">
-            <icon-lucide-app-window
-              v-if="session.method === 'desktop'"
-              class="size-4 shrink-0 text-muted"
-            />
-            <icon-lucide-globe v-else class="size-4 shrink-0 text-muted" />
-            <div class="min-w-0">
-              <p :class="ui.title()">
-                {{ labels.device(session) }}
-                <AppBadge v-if="session.current">{{ messages.thisSession }}</AppBadge>
-              </p>
-              <p v-if="signedInWith(session)" :class="ui.detail()">{{ signedInWith(session) }}</p>
-            </div>
-          </div>
-        </template>
-        <template #address="{ row: session }">{{ session.ipAddress }}</template>
-        <template #signedIn="{ row: session }">{{ session.signedInOn }}</template>
-        <template #lastActive="{ row: session }">{{ session.lastActive }}</template>
-        <template #actions="{ row: session }">
-          <AppButton
-            v-if="!session.current"
-            size="sm"
-            variant="ghost"
-            :disabled="busy"
-            @click="confirming = { kind: 'one', session }"
-          >
-            {{ messages.signOut }}
-          </AppButton>
-        </template>
         <template #empty>
           <p class="text-center text-xs text-muted">{{ messages.noSessions }}</p>
         </template>
@@ -174,17 +177,6 @@ function confirm() {
       <template #title>{{ messages.recentSignIns }}</template>
       <template v-if="manage" #description>{{ messages.recentSignInsDescription }}</template>
       <AppDataTable :table="signInTable" :label="messages.recentSignIns" :loading="loading">
-        <template #device="{ row: signIn }">
-          <div class="flex min-w-0 items-center gap-3">
-            <icon-lucide-log-in class="size-4 shrink-0 text-muted" />
-            <div class="min-w-0">
-              <p :class="ui.title()">{{ labels.device(signIn) }}</p>
-              <p v-if="signedInWith(signIn)" :class="ui.detail()">{{ signedInWith(signIn) }}</p>
-            </div>
-          </div>
-        </template>
-        <template #address="{ row: signIn }">{{ signIn.ipAddress }}</template>
-        <template #when="{ row: signIn }">{{ signIn.when }}</template>
         <template #empty>
           <p class="text-center text-xs text-muted">{{ messages.noSignIns }}</p>
         </template>

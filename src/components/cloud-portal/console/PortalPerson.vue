@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { createColumnHelper } from '@tanstack/vue-table'
 import { compact } from 'es-toolkit'
-import { computed } from 'vue'
+import { computed, h } from 'vue'
+import IconLayers from '~icons/lucide/layers'
 
 import type { WorkspaceRole } from '@open-pencil/cloud/contract'
 import { useCloudPortalMessages } from '@open-pencil/vue/i18n'
@@ -13,9 +14,11 @@ import SettingsRow from '@/components/settings/layout/SettingsRow.vue'
 import SettingsSection from '@/components/settings/layout/SettingsSection.vue'
 import AppButton from '@/components/ui/button/AppButton.vue'
 import AppDataTable from '@/components/ui/table/AppDataTable.vue'
-import { portalList } from '@/theme/cloud-portal/list'
+import { portalTable } from '@/theme/cloud-portal/table'
 
 import PortalSessions from '../account/PortalSessions.vue'
+import PortalStatusCell from '../table/PortalStatusCell.vue'
+import PortalTextCell from '../table/PortalTextCell.vue'
 import type { PortalPersonAction, PortalPersonDetail } from '../types'
 import PortalPersonActions from './PortalPersonActions.vue'
 
@@ -26,7 +29,7 @@ import PortalPersonActions from './PortalPersonActions.vue'
 const { detail, busy = false } = defineProps<{ detail: PortalPersonDetail; busy?: boolean }>()
 const emit = defineEmits<{ act: [action: PortalPersonAction, reason?: string]; back: [] }>()
 
-const ui = portalList()
+const ui = portalTable()
 const messages = useCloudPortalMessages()
 const person = computed(() => detail.person)
 
@@ -49,29 +52,36 @@ const twoStep = computed(() => {
   ])
   return parts.length ? parts.join(' · ') : words.twoStepNone
 })
-const column = createColumnHelper<PortalTableFeatures, PortalPersonDetail['workspaces'][number]>()
-const workspaces = usePortalRows(() => detail.workspaces, {
-  rowId: (workspace) => workspace.id,
-  columns: [
-    column.display({ id: 'workspace', header: () => messages.value.columnWorkspace }),
-    column.display({
-      id: 'role',
-      header: () => messages.value.columnRole,
-      meta: { class: 'w-32' }
-    }),
-    column.display({
-      id: 'members',
-      header: () => messages.value.columnMembers,
-      meta: { class: 'w-24 text-right tabular-nums' }
-    })
-  ]
-})
 const roleLabel = (role: WorkspaceRole) =>
   ({
     admin: messages.value.workspaceRoleAdmin,
     editor: messages.value.workspaceRoleEditor,
     viewer: messages.value.workspaceRoleViewer
   })[role]
+
+const column = createColumnHelper<PortalTableFeatures, PortalPersonDetail['workspaces'][number]>()
+const workspaces = usePortalRows(() => detail.workspaces, {
+  rowId: (workspace) => workspace.id,
+  columns: column.columns([
+    column.display({
+      id: 'workspace',
+      header: () => messages.value.columnWorkspace,
+      cell: ({ row: { original: workspace } }) =>
+        h(PortalTextCell, { icon: IconLayers, text: workspace.name, strong: true })
+    }),
+    column.display({
+      id: 'role',
+      header: () => messages.value.columnRole,
+      meta: { class: 'w-32' },
+      cell: ({ row: { original: workspace } }) =>
+        h(PortalStatusCell, { statuses: [{ label: roleLabel(workspace.role), tone: 'neutral' }] })
+    }),
+    column.accessor('memberCount', {
+      header: () => messages.value.columnMembers,
+      meta: { class: 'w-24 text-right tabular-nums' }
+    })
+  ])
+})
 </script>
 
 <template>
@@ -135,16 +145,6 @@ const roleLabel = (role: WorkspaceRole) =>
     <SettingsSection>
       <template #title>{{ messages.personWorkspaces }}</template>
       <AppDataTable :table="workspaces" :label="messages.personWorkspaces">
-        <template #workspace="{ row: workspace }">
-          <div class="flex min-w-0 items-center gap-3">
-            <icon-lucide-layers class="size-4 shrink-0 text-muted" />
-            <span :class="ui.title()">{{ workspace.name }}</span>
-          </div>
-        </template>
-        <template #role="{ row: workspace }">
-          <span :class="ui.status()" data-tone="neutral">{{ roleLabel(workspace.role) }}</span>
-        </template>
-        <template #members="{ row: workspace }">{{ workspace.memberCount }}</template>
         <template #empty>
           <p class="text-center text-xs text-muted">{{ messages.personWorkspacesEmpty }}</p>
         </template>

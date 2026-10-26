@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-
 import IconButton from '@/components/ui/button/IconButton.vue'
 
-import { tablePagination, type TablePaginationUI } from './table'
+import { useTableUI, type TableUI } from './ui'
 
 /** Where a page sits among a table's rows, and the buttons to the pages either side. */
 const { range, canPrevious, canNext, previousLabel, nextLabel, ui } = defineProps<{
@@ -13,24 +11,16 @@ const { range, canPrevious, canNext, previousLabel, nextLabel, ui } = defineProp
   canNext: boolean
   previousLabel: string
   nextLabel: string
-  ui?: TablePaginationUI
+  ui?: TableUI
 }>()
 const emit = defineEmits<{ previous: []; next: [] }>()
-
-const styles = computed(() => {
-  const theme = tablePagination()
-  return {
-    root: theme.root({ class: ui?.root }),
-    range: theme.range({ class: ui?.range }),
-    buttons: theme.buttons({ class: ui?.buttons })
-  }
-})
+const cls = useTableUI(ui)
 </script>
 
 <template>
-  <div :class="styles.root">
-    <span :class="styles.range">{{ range }}</span>
-    <div :class="styles.buttons">
+  <div data-slot="table-pagination" :class="cls.pagination">
+    <span :class="cls.range">{{ range }}</span>
+    <div :class="cls.pages">
       <IconButton :label="previousLabel" :disabled="!canPrevious" @click="emit('previous')">
         <icon-lucide-chevron-left class="size-3.5" />
       </IconButton>

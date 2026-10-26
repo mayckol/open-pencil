@@ -4,44 +4,39 @@ import { expect, within } from 'storybook/test'
 
 import AppDataTable from './AppDataTable.vue'
 import AppTablePagination from './AppTablePagination.vue'
-import type { TableColumnMeta } from './table'
+import type { TableColumnMeta } from './columns'
 
 type Layer = { id: string; name: string; kind: string; updated: string }
 
 const features = tableFeatures({ columnMeta: {} as TableColumnMeta })
 const column = createColumnHelper<typeof features, Layer>()
-const columns = [
-  column.display({ id: 'name', header: 'Name' }),
-  column.display({ id: 'kind', header: 'Kind', meta: { class: 'w-28 text-muted' } }),
-  column.display({
-    id: 'updated',
+const columns = column.columns([
+  column.accessor('name', { header: 'Name', meta: { class: 'font-medium' } }),
+  column.accessor('kind', { header: 'Kind', meta: { class: 'w-28 text-muted' } }),
+  column.accessor('updated', {
     header: 'Updated',
-    meta: { class: 'hidden w-36 text-muted @xl/data-table:table-cell' }
-  }),
-  column.display({ id: 'actions', header: 'Actions', meta: { headerHidden: true } })
-]
+    meta: { class: 'hidden w-36 text-muted @xl/table:table-cell' }
+  })
+])
 const layers: Layer[] = [
   { id: '1', name: 'Hero', kind: 'Frame', updated: 'Oct 24, 2026' },
   { id: '2', name: 'Primary button', kind: 'Component', updated: 'Oct 22, 2026' },
   { id: '3', name: 'Logo', kind: 'Vector', updated: 'Sep 30, 2026' }
 ]
+const rowId = (layer: Layer) => layer.id
 
 const meta = {
   title: 'Design System/Table/Data table',
   render: () => ({
     components: { AppDataTable, AppTablePagination },
-    setup: () => ({
-      table: useTable({ features, columns, data: layers, getRowId: (layer: Layer) => layer.id })
-    }),
+    setup: () => ({ table: useTable({ features, columns, data: layers, getRowId: rowId }) }),
     template: `
-      <div class="flex max-w-3xl flex-col gap-3 p-4">
+      <div class="max-w-3xl p-4">
         <AppDataTable :table="table" label="Layers">
-          <template #name="{ row }"><span class="font-medium">{{ row.name }}</span></template>
-          <template #kind="{ row }">{{ row.kind }}</template>
-          <template #updated="{ row }">{{ row.updated }}</template>
-          <template #actions><span class="text-muted">…</span></template>
+          <template #footer>
+            <AppTablePagination range="1–3 of 3" :can-previous="false" :can-next="false" previous-label="Previous page" next-label="Next page" />
+          </template>
         </AppDataTable>
-        <AppTablePagination range="1–3 of 3" :can-previous="false" :can-next="false" previous-label="Previous page" next-label="Next page" />
       </div>`
   })
 } satisfies Meta
@@ -55,6 +50,17 @@ export const Rows: Story = {
     await expect(page.getByRole('table', { name: 'Layers' })).toBeVisible()
     await expect(page.getAllByRole('row')).toHaveLength(4)
   }
+}
+
+export const Loading: Story = {
+  render: () => ({
+    components: { AppDataTable },
+    setup: () => ({ table: useTable({ features, columns, data: [] }) }),
+    template: `
+      <div class="max-w-3xl p-4">
+        <AppDataTable :table="table" label="Layers" loading="first" />
+      </div>`
+  })
 }
 
 export const Empty: Story = {

@@ -13,7 +13,7 @@ import { computed, ref, shallowRef, toValue, watch, type MaybeRefOrGetter } from
 
 import { useCloudPortalMessages } from '@open-pencil/vue/i18n'
 
-import type { TableColumnMeta } from '@/components/ui/table/table'
+import type { TableColumnMeta } from '@/components/ui/table/columns'
 
 import { usePortalLoad } from './state'
 

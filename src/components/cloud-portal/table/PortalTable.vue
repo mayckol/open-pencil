@@ -11,14 +11,13 @@ import AppInput from '@/components/ui/input/AppInput.vue'
 import SegmentedControl from '@/components/ui/select/SegmentedControl.vue'
 import AppDataTable from '@/components/ui/table/AppDataTable.vue'
 import AppTablePagination from '@/components/ui/table/AppTablePagination.vue'
-import { portalList } from '@/theme/cloud-portal/list'
+import { portalTable } from '@/theme/cloud-portal/table'
 
 import PortalLoadAlert from '../layout/PortalLoadAlert.vue'
 
 /**
  * A console list the server searches, filters, and pages: a search box when `searchLabel` is
- * given, the filters with how many rows each holds, the table, and the pages. Cells come from
- * slots named after their columns, as in `AppDataTable`.
+ * given, the filters with how many rows each holds, the table its columns draw, and the pages.
  */
 const {
   list,
@@ -37,11 +36,9 @@ const {
   emptyLabel: string
   emptyDescription?: string
 }>()
-const slots = defineSlots<
-  { icon?: () => unknown } & Record<string, ((props: { row: Row }) => unknown) | undefined>
->()
+defineSlots<{ icon?: () => unknown }>()
 
-const ui = portalList()
+const ui = portalTable()
 const messages = useCloudPortalMessages()
 const { table, query, filter, counts, range, total, status, error, reload } = list
 /** What the table shows while the server answers. */
@@ -62,7 +59,6 @@ function countOf(value: string) {
   const option = filterOf(value)
   return option && counts.value ? counts.value[option.value] : null
 }
-const cellSlots = computed(() => Object.keys(slots).filter((name) => name !== 'icon'))
 </script>
 
 <template>
@@ -101,8 +97,16 @@ const cellSlots = computed(() => Object.keys(slots).filter((name) => name !== 'i
       </AppInput>
     </div>
     <AppDataTable :table="table" :label="label" :hidden="hidden" :loading="loading">
-      <template v-for="name in cellSlots" #[name]="{ row }" :key="name">
-        <slot :name="name" :row="row" />
+      <!-- A failed load says so above the table; it does not mean nothing matched. -->
+      <template v-if="!error" #empty>
+        <AppPlaceholder
+          size="compact"
+          :fill="false"
+          :label="emptyLabel"
+          :description="emptyDescription"
+        >
+          <template #icon><slot name="icon" /></template>
+        </AppPlaceholder>
       </template>
       <template v-if="total" #footer>
         <AppTablePagination
@@ -114,17 +118,6 @@ const cellSlots = computed(() => Object.keys(slots).filter((name) => name !== 'i
           @previous="table.previousPage()"
           @next="table.nextPage()"
         />
-      </template>
-      <!-- A failed load says so above the table; it does not mean nothing matched. -->
-      <template v-if="!error" #empty>
-        <AppPlaceholder
-          size="compact"
-          :fill="false"
-          :label="emptyLabel"
-          :description="emptyDescription"
-        >
-          <template #icon><slot name="icon" /></template>
-        </AppPlaceholder>
       </template>
     </AppDataTable>
   </div>

@@ -214,7 +214,7 @@ without two-step sign-in; access requests are searched by name or email in each 
 recipient and delivery; activity by the names of who acted and whom it was about, and by what it
 was about. In the portal, `usePortalList` (`src/app/cloud-portal/list.ts`) holds a list's search,
 filter, and page and builds its TanStack Table; `PortalTable` draws the toolbar, the shared
-`AppDataTable`, and the pages, and each list only names its columns. A row has at most one inline
+`AppDataTable`, and the pages, and each list only defines its columns, which render their cells with the components in `src/components/cloud-portal/table/`. A row has at most one inline
 action, such as Approve; the rest are in its “…” menu. A person's page shows how they sign in, their workspaces, sessions, and recent
 sign-ins. Administrators make and remove administrators, sign people out everywhere, suspend
 with a reason the activity log keeps, and reset a locked-out person's two-step sign-in, which
