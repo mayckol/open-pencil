@@ -117,10 +117,9 @@ export const exportPDF = defineTool({
     )
   }),
   execute: async (figma, args) => {
-    const [{ renderPagesToPDFDetailed }, pdfPrepare, { withTextLayout }] = await Promise.all([
+    const [{ renderPagesToPDFDetailed }, pdfPrepare] = await Promise.all([
       import('#core/io/formats/pdf'),
-      import('#core/io/formats/pdf/prepare'),
-      import('#core/io/formats/svg/text/layout')
+      import('#core/io/formats/pdf/prepare')
     ])
     try {
       if (args.mode === 'pages') pdfPrepare.readPDFPages(figma.graph, args.page_ids)
@@ -135,7 +134,7 @@ export const exportPDF = defineTool({
           ? await pdfPrepare.preparePagesForPDF(figma.graph, specs)
           : await pdfPrepare.preparePDFFonts(figma.graph, specs)
       const fonts = args.embed_fonts ? pdfPrepare.pdfFontFaces(fontStatus) : undefined
-      const result = await withTextLayout((textLayout) =>
+      const result = await pdfPrepare.withPDFTextLayout((textLayout) =>
         renderPagesToPDFDetailed(figma.graph, specs, { fonts, textLayout })
       )
       if (!result || result.data.length === 0) return { error: 'No visible nodes to export' }

@@ -1,13 +1,16 @@
+import type { ShapedTextGlyph } from '@open-pencil/fig/node-change'
 import type { SceneGraph } from '@open-pencil/scene-graph'
 
+import { withTextShaper } from '#core/canvas/text/shape'
+import { getCanvasKit } from '#core/canvaskit'
 import { populateFigPage } from '#core/io/formats/fig'
-import { withTextLayout } from '#core/io/formats/svg/text/layout'
+import type { SVGCharacterEdges, SVGTextLayout } from '#core/io/formats/svg'
 import { computeAllLayouts } from '#core/layout'
+import { shownText } from '#core/text/case'
 import type { DocumentFontStatus } from '#core/text/font/status'
 import { fontManager } from '#core/text/fonts'
 import { prepareGraphFonts } from '#core/text/prepare'
 
-import { renderNodesToPDF } from './export'
 import type { PDFFontFace } from './fonts'
 import type { PDFPageSpec } from './plan'
 
@@ -63,14 +66,48 @@ export function pdfFontFaces(status: DocumentFontStatus): PDFFontFace[] {
 }
 
 /**
- * Layers as a one-page PDF with their text set as the canvas sets it: the fonts it draws with
- * loaded, and wrapped paragraphs kept on their lines.
+ * Runs `render` with the line breaks the canvas gives each text node (same paragraph builder and
+ * fonts), so a wrapped paragraph stays wrapped in the PDF. Without CanvasKit, `render` gets no
+ * layout and only explicit newlines start a new line.
  */
-export async function renderNodesToLaidOutPDF(
-  graph: SceneGraph,
-  pageId: string,
-  nodeIds: string[]
-): Promise<Uint8Array | null> {
-  await preparePDFFonts(graph, [{ pageId, nodeIds }])
-  return withTextLayout((textLayout) => renderNodesToPDF(graph, pageId, nodeIds, { textLayout }))
+export async function withPDFTextLayout<T>(
+  render: (textLayout: SVGTextLayout | undefined) => Promise<T>
+): Promise<T> {
+  const ck = await getCanvasKit().catch(() => null)
+  if (!ck) return render(undefined)
+  return withTextShaper(ck, (shape) =>
+    render((node) => {
+      // Shaped lines are cut by character index, which the text's case must keep.
+      if (shownText(node).length !== node.text.length) return null
+      const shaped = shape(node)
+      if (!shaped?.baselines.length) return null
+      const characters = characterEdges(shaped.glyphs)
+      return shaped.baselines.map((line) => ({
+        start: line.firstCharacter,
+        end: line.endCharacter,
+        x: line.position.x,
+        y: line.position.y,
+        width: line.width,
+        characters
+      }))
+    })
+  )
+}
+
+/** The left and right edges of the glyphs each character is drawn with. */
+function characterEdges(glyphs: readonly ShapedTextGlyph[]): Map<number, SVGCharacterEdges> {
+  const edges = new Map<number, SVGCharacterEdges>()
+  for (const glyph of glyphs) {
+    if (glyph.firstCharacter === undefined) continue
+    const left = glyph.x
+    const right = glyph.x + glyph.advance
+    const known = edges.get(glyph.firstCharacter)
+    edges.set(
+      glyph.firstCharacter,
+      known
+        ? { left: Math.min(known.left, left), right: Math.max(known.right, right) }
+        : { left, right }
+    )
+  }
+  return edges
 }
