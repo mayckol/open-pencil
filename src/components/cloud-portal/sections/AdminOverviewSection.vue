@@ -13,14 +13,15 @@ const overview = usePortalLoad<PortalServerStatus | null>(() => portal.api.opera
 </script>
 
 <template>
-  <div :aria-busy="overview.loading.value || undefined">
+  <!-- A failed refresh says so above the status it last read, which stays. -->
+  <div class="flex flex-col gap-4" :aria-busy="overview.loading.value || undefined">
     <PortalLoadAlert
       v-if="overview.error.value"
       :error="overview.error.value"
       @retry="overview.reload()"
     />
     <PortalStatus
-      v-else-if="overview.data.value"
+      v-if="overview.data.value"
       :status="overview.data.value"
       @open="(section) => emit('open', section)"
     />

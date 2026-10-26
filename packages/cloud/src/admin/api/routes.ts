@@ -25,8 +25,11 @@ import { Hono, type Context } from 'hono'
 import { NoResultError, type Kysely } from 'kysely'
 import * as v from 'valibot'
 
-/** A count from the query string; anything but digits is a bad request, not a NaN query. */
-const countSchema = v.optional(v.pipe(v.string(), v.digits(), v.toNumber()))
+/**
+ * A count from the query string; anything but digits, or a number too large to be exact, is a bad
+ * request rather than a NaN or out-of-range query.
+ */
+const countSchema = v.optional(v.pipe(v.string(), v.digits(), v.toNumber(), v.safeInteger()))
 /** What an admin list reads from its query string: a search, one of `filters`, and a page. */
 function listQuery<const Filter extends string>(filters: v.PicklistSchema<Filter[], undefined>) {
   const schema = v.object({

@@ -245,6 +245,7 @@ describe('createCloudApp', () => {
         '/api/admin/audit?limit=many',
         '/api/admin/email?limit=-1',
         '/api/admin/users?offset=1.5',
+        '/api/admin/users?offset=99999999999999999999',
         '/api/admin/enrollments?filter=sideways',
         '/api/admin/email?filter=bounced'
       ]) {

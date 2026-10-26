@@ -18,15 +18,20 @@ export type PortalLoadStatus = 'loading' | 'failed' | 'refreshing' | 'ready'
 export function usePortalLoad<T>(load: () => Promise<T>, initial: T) {
   const failures = usePortalFailureMessages()
   // `useAsyncState` resets its own `isReady` on every run, so whether anything ever loaded is kept
-  // here: it tells a first load, with nothing to show, from a refresh.
+  // here: it tells a first load, with nothing to show, from a refresh. Only the newest request
+  // counts, as for the value: an older one that succeeds after a newer one failed shows nothing.
   const loaded = shallowRef(false)
-  const { state, isLoading, error, execute } = useAsyncState(load, initial, {
-    resetOnExecute: false,
-    onError: noop,
-    onSuccess: () => {
-      loaded.value = true
-    }
-  })
+  let latest = 0
+  const { state, isLoading, error, execute } = useAsyncState(
+    async () => {
+      const request = ++latest
+      const value = await load()
+      if (request === latest) loaded.value = true
+      return value
+    },
+    initial,
+    { resetOnExecute: false, onError: noop }
+  )
   const status = computed<PortalLoadStatus>(() => {
     if (loaded.value) return isLoading.value ? 'refreshing' : 'ready'
     return isLoading.value ? 'loading' : 'failed'

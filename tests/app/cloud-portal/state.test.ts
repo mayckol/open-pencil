@@ -61,6 +61,31 @@ describe('usePortalLoad', () => {
     }
   })
 
+  test('counts only the newest request, as for its value', async () => {
+    const requests: ReturnType<typeof pending>[] = []
+    const scope = effectScope(true)
+    const load = scope.run(() =>
+      usePortalLoad(() => {
+        const request = pending()
+        requests.push(request)
+        return request.promise
+      }, '')
+    )
+    if (!load) throw new Error('The load did not start')
+    try {
+      // The page asks again before its first answer, which then arrives after the second failed.
+      const again = load.reload()
+      requests[1]?.refuse(new Error('offline'))
+      await again
+      requests[0]?.answer('stale')
+      await settle()
+      expect(load.status.value).toBe('failed')
+      expect(load.data.value).toBe('')
+    } finally {
+      scope.stop()
+    }
+  })
+
   test('fails when nothing has loaded yet', async () => {
     const scope = effectScope(true)
     const load = scope.run(() => usePortalLoad(() => Promise.reject(new Error('offline')), ''))
