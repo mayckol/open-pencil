@@ -1,6 +1,6 @@
 import type { Canvas, Path, PathBuilder, PathOp } from 'canvaskit-wasm'
 
-import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
+import type { SceneGraph, SceneNode, Stroke } from '@open-pencil/scene-graph'
 import type { GroupFitOptions } from '@open-pencil/scene-graph/group-bounds'
 
 import { getTextOutlineSupport } from '#core/text/outlines'
@@ -76,13 +76,33 @@ export function nodeHasVisibleStroke(node: SceneNode): boolean {
   return node.strokes.some((stroke) => stroke.visible && stroke.weight > 0)
 }
 
-function addVisibleStrokeOutlines(target: PathBuilder, source: Path, node: SceneNode): void {
+/**
+ * The area a stroke paints along `source`, as the canvas draws it: centred on the path, or, on a
+ * layer whose outline it keeps to, twice its weight cut to inside or outside the outline. Vectors
+ * stroke their paths centred whatever the alignment, as the canvas draws them.
+ */
+function strokeArea(r: SkiaRenderer, source: Path, node: SceneNode, stroke: Stroke): Path | null {
+  const aligned = stroke.align !== 'CENTER' && node.type !== 'VECTOR'
+  const outline = source.makeStroked({ width: aligned ? stroke.weight * 2 : stroke.weight })
+  if (!outline || !aligned) return outline
+  const op = stroke.align === 'INSIDE' ? r.ck.PathOp.Intersect : r.ck.PathOp.Difference
+  const area = r.ck.Path.MakeFromOp(outline, source, op)
+  outline.delete()
+  return area
+}
+
+function addVisibleStrokeOutlines(
+  r: SkiaRenderer,
+  target: PathBuilder,
+  source: Path,
+  node: SceneNode
+): void {
   for (const stroke of node.strokes) {
     if (!stroke.visible || stroke.weight <= 0) continue
-    const outline = source.makeStroked({ width: stroke.weight })
-    if (!outline) continue
-    target.addPath(outline)
-    outline.delete()
+    const area = strokeArea(r, source, node, stroke)
+    if (!area) continue
+    target.addPath(area)
+    area.delete()
   }
 }
 
@@ -127,7 +147,7 @@ function containerSourcePath(r: SkiaRenderer, node: SceneNode, graph: SceneGraph
     const ownPath = baseShapePath(r, node)
     if (ownPath) {
       if (nodeHasVisibleFill(node)) path.addPath(ownPath)
-      addVisibleStrokeOutlines(path, ownPath, node)
+      addVisibleStrokeOutlines(r, path, ownPath, node)
       ownPath.delete()
       hasPath = true
     }
@@ -169,7 +189,7 @@ export function makeBooleanSourcePath(
   if (!nodeHasVisibleStroke(node)) return path
   const combined = new r.ck.PathBuilder()
   combined.addPath(path)
-  addVisibleStrokeOutlines(combined, path, node)
+  addVisibleStrokeOutlines(r, combined, path, node)
   path.delete()
   return combined.detachAndDelete()
 }
@@ -195,7 +215,7 @@ export function makeStrokeOutlinePath(
     if (nodeHasVisibleStroke(node)) {
       const ownPath = baseShapePath(r, node)
       if (ownPath) {
-        addVisibleStrokeOutlines(path, ownPath, node)
+        addVisibleStrokeOutlines(r, path, ownPath, node)
         ownPath.delete()
         hasPath = true
       }
@@ -222,7 +242,7 @@ export function makeStrokeOutlinePath(
   if (!path) return null
   if (node.type === 'LINE') return path
   const outline = new r.ck.PathBuilder()
-  addVisibleStrokeOutlines(outline, path, node)
+  addVisibleStrokeOutlines(r, outline, path, node)
   path.delete()
   return outline.detachAndDelete()
 }

@@ -111,6 +111,33 @@ describe('flattenSelected', () => {
     expect(editor.graph.getNode(rect.id)).toBeUndefined()
   })
 
+  test('outlines a stroke where it is drawn, painted with the stroke', async () => {
+    // Figma's outline of a 4 px stroke on a 100 px box covers the box inside, 104 centred, 108
+    // outside, and is filled with the stroke's paint.
+    const red = { r: 1, g: 0, b: 0, a: 1 }
+    const outlined = async (align: 'INSIDE' | 'CENTER' | 'OUTSIDE') => {
+      const { editor } = await createEditorWithRenderer()
+      const rect = editor.graph.createNode('RECTANGLE', editor.state.currentPageId, {
+        x: 50,
+        y: 50,
+        width: 100,
+        height: 100,
+        fills: [],
+        strokes: [{ type: 'SOLID', color: red, weight: 4, opacity: 1, visible: true, align }]
+      })
+      editor.select([rect.id])
+      editor.outlineStrokeSelected()
+      const vector = editor.graph.getNode([...editor.state.selectedIds][0] ?? '')
+      return {
+        box: [vector?.x, vector?.y, vector?.width, vector?.height],
+        fills: vector?.fills.map((fill) => (fill.type === 'SOLID' ? fill.color : null))
+      }
+    }
+    expect(await outlined('INSIDE')).toEqual({ box: [50, 50, 100, 100], fills: [red] })
+    expect((await outlined('CENTER')).box).toEqual([48, 48, 104, 104])
+    expect((await outlined('OUTSIDE')).box).toEqual([46, 46, 108, 108])
+  })
+
   test('outlines stroked descendants inside groups', async () => {
     const { editor } = await createEditorWithRenderer()
     const pageId = editor.state.currentPageId
