@@ -203,8 +203,9 @@ describe('outlineStrokeSelected', () => {
   })
 
   test('turns stroked text into a group of glyph outlines for its fill and its stroke', async () => {
-    const data = await Bun.file('packages/core/assets/InterVariable.ttf').arrayBuffer()
-    await fontManager.markLoaded('Inter', 'Regular', data)
+    const inter = await fontManager.fetchBundledFont('/InterVariable.ttf')
+    if (!inter) throw new Error('Expected the bundled Inter')
+    await fontManager.markLoaded('Inter', 'Regular', inter)
     const editor = await createEditorWithRenderer()
     const text = editor.graph.createNode('TEXT', editor.state.currentPageId, {
       name: 'Hi',
@@ -231,6 +232,64 @@ describe('outlineStrokeSelected', () => {
       ['Vector', 'Vector'],
       ['Stroke', 'Stroke']
     ])
+  })
+
+  test('outlines a boolean’s combined shape, not its box', async () => {
+    const editor = await createEditorWithRenderer()
+    const pageId = editor.state.currentPageId
+    const boolean = editor.graph.createNode('BOOLEAN_OPERATION', pageId, {
+      name: 'Overlap',
+      booleanOperation: 'INTERSECT',
+      width: 150,
+      height: 150,
+      fills: [solid(BLUE)],
+      strokes: [stroke()]
+    })
+    for (const at of [0, 50]) {
+      editor.graph.createNode('RECTANGLE', boolean.id, {
+        x: at,
+        y: at,
+        width: 100,
+        height: 100,
+        fills: [solid(BLUE)]
+      })
+    }
+    editor.select([boolean.id])
+    editor.outlineStrokeSelected()
+    // The two squares meet in 50 × 50, which an inside stroke stays within.
+    expect(selected(editor).map((layer) => layer.box)).toEqual([
+      [50, 50, 50, 50],
+      [50, 50, 50, 50]
+    ])
+  })
+
+  test('fits the group around outlines that reach past the layer, and undo refits it back', async () => {
+    const editor = await createEditorWithRenderer()
+    const pageId = editor.state.currentPageId
+    const rect = editor.graph.createNode('RECTANGLE', pageId, {
+      x: 50,
+      y: 50,
+      width: 100,
+      height: 100,
+      fills: [],
+      strokes: [stroke('OUTSIDE')]
+    })
+    editor.select([rect.id])
+    editor.groupSelected()
+    const groupId = rect.parentId ?? ''
+    const box = () => {
+      const group = editor.graph.getNode(groupId)
+      return [group?.x, group?.y, group?.width, group?.height]
+    }
+    expect(box()).toEqual([50, 50, 100, 100])
+
+    editor.outlineStrokeSelected()
+    expect(box()).toEqual([46, 46, 108, 108])
+
+    editor.undo.undo()
+    expect(box()).toEqual([50, 50, 100, 100])
+    editor.undo.redo()
+    expect(box()).toEqual([46, 46, 108, 108])
   })
 
   test('leaves fill-only shapes alone', async () => {

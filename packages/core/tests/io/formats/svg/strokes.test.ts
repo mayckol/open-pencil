@@ -58,4 +58,22 @@ describe('aligned strokes exported to SVG', () => {
     expect(svg).toMatch(/<rect [^>]*stroke="#B3B3B3" stroke-width="2"/)
     expect(svg).not.toContain('clip-path')
   })
+
+  test('an outside stroke’s clip reaches as far as its mitred tips', () => {
+    const graph = new SceneGraph()
+    const page = graph.getPages()[0].id
+    const star = graph.createNode('STAR', page, {
+      width: 100,
+      height: 100,
+      pointCount: 5,
+      starInnerRadius: 0.2,
+      strokeMiterLimit: 10,
+      strokes: [{ ...stroke('OUTSIDE'), weight: 4 }]
+    })
+    const svg = expectDefined(renderNodesToSVG(graph, page, [star.id], { xmlDeclaration: false }))
+    const stroked = expectDefined(/<path [^>]*stroke="#B3B3B3"[^>]*>/.exec(svg))[0]
+    // A miter of the doubled stroke reaches its weight, 4, times the miter limit past the tip.
+    const [, left] = expectDefined(/d="M(-?[\d.]+) /.exec(clipOf(svg, stroked)))
+    expect(Number(left)).toBeLessThanOrEqual(-40)
+  })
 })

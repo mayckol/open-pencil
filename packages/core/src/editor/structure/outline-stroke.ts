@@ -7,6 +7,7 @@ import {
   type OutlinedLayer
 } from '#core/canvas/outline-stroke'
 import { restoreSubtree, snapshotSubtree } from '#core/editor/history/subtree'
+import { fitEnclosingGroupsWithUndo } from '#core/editor/structure/group/bounds'
 import type { EditorContext } from '#core/editor/types'
 
 /** A layer to outline, where it sits, and what it becomes. */
@@ -57,7 +58,7 @@ export function outlineStrokeSelected(
   const plan: Outlining[] = []
   for (const node of layersToOutline(selectedNodes, ctx.graph)) {
     const parent = node.parentId ? ctx.graph.getNode(node.parentId) : undefined
-    const outlined = parent ? outlineStrokeLayer(renderer, node) : null
+    const outlined = parent ? outlineStrokeLayer(renderer, node, ctx.graph) : null
     if (!parent || !outlined) continue
     plan.push({
       node,
@@ -89,6 +90,32 @@ export function outlineStrokeSelected(
   for (const parentId of parentIds) ctx.runLayoutForNode(parentId)
   ctx.setSelectedIds(new Set(madeIds))
 
+  // Groups around the outlines fit them, which can reach past the layers they replace, in the
+  // same undo step.
+  ctx.undo.runBatch('Outline stroke', () => {
+    pushOutlineUndo(ctx, { plan, made, madeIds, parentIds, prevSelection })
+    fitEnclosingGroupsWithUndo(ctx, parentIds)
+  })
+  return madeIds
+}
+
+/** The undo step that puts the outlined layers back, and redo that outlines them again. */
+function pushOutlineUndo(
+  ctx: EditorContext,
+  {
+    plan,
+    made,
+    madeIds,
+    parentIds,
+    prevSelection
+  }: {
+    plan: readonly Outlining[]
+    made: readonly Made[]
+    madeIds: readonly string[]
+    parentIds: ReadonlySet<string>
+    prevSelection: ReadonlySet<string>
+  }
+) {
   ctx.undo.push({
     label: 'Outline stroke',
     forward: () => {
@@ -109,8 +136,7 @@ export function outlineStrokeSelected(
         }))
       )
       for (const parentId of parentIds) ctx.runLayoutForNode(parentId)
-      ctx.setSelectedIds(prevSelection)
+      ctx.setSelectedIds(new Set(prevSelection))
     }
   })
-  return madeIds
 }

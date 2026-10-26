@@ -11,6 +11,7 @@ import {
   baseShapePath,
   canContainFlattenableChildren,
   canMakeBooleanSourcePath,
+  makeBooleanOperationPath,
   nodeHasVisibleFill,
   nodeHasVisibleStroke,
   strokeAreaPath
@@ -136,9 +137,13 @@ function pieceOf(
 }
 
 /** The shapes a layer is drawn from: text by glyph, anything else as one path. */
-function sourcePaths(r: SkiaRenderer, node: SceneNode): Path[] {
+function sourcePaths(r: SkiaRenderer, node: SceneNode, graph: SceneGraph): Path[] {
   if (node.type === 'TEXT') return textGlyphPaths(r, node) ?? []
-  const path = baseShapePath(r, node)
+  // A boolean is drawn as the shape its operation makes of its children.
+  const path =
+    node.type === 'BOOLEAN_OPERATION'
+      ? makeBooleanOperationPath(r, node, graph)
+      : baseShapePath(r, node)
   return path ? [path] : []
 }
 
@@ -152,9 +157,13 @@ export function canOutlineStroke(node: SceneNode): boolean {
  * stroke's paints where the stroke is drawn, over "<name>", its fill, when it has one. Both keep
  * the layer's turn, opacity, and effects. Null when the stroke covers nothing.
  */
-export function outlineStrokeLayer(r: SkiaRenderer, node: SceneNode): OutlinedLayer | null {
+export function outlineStrokeLayer(
+  r: SkiaRenderer,
+  node: SceneNode,
+  graph: SceneGraph
+): OutlinedLayer | null {
   if (!canOutlineStroke(node)) return null
-  const sources = sourcePaths(r, node)
+  const sources = sourcePaths(r, node, graph)
   try {
     // A line's shape is already its stroke.
     const strokes =

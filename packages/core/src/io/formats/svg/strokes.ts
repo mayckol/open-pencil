@@ -52,8 +52,9 @@ export function alignedStrokeElement(
   if (stroke.align === 'INSIDE') {
     ctx.defs.push(svg('clipPath', { id: clipId }, svg('path', { d: outline })))
   } else {
-    // A box wide enough for the stroke, with the outline cut out of it.
-    const margin = stroke.weight * 2
+    // A box wide enough for the stroke, its mitred tips included, with the outline cut out of it.
+    // The doubled stroke mitres out to its weight times the miter limit.
+    const margin = stroke.weight * Math.max(2, node.strokeMiterLimit)
     const left = round(-margin)
     const top = round(-margin)
     const right = round(node.width + margin)
