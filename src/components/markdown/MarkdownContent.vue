@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type Component } from 'vue'
 import { Markdown } from 'vue-stream-markdown'
 
 import { IS_BROWSER } from '@open-pencil/core/constants'
@@ -17,6 +17,7 @@ const {
   mode = 'static',
   density = 'compact',
   highlightCode = false,
+  components,
   class: className
 } = defineProps<{
   content: string
@@ -24,12 +25,18 @@ const {
   density?: MarkdownDensity
   /** Loads Shiki for fenced code blocks; leave off where code is rare. */
   highlightCode?: boolean
+  /** Inline components the content uses, written `:name[text]{attributes}`. */
+  components?: Record<string, Component>
   class?: string
 }>()
 
 const isDark = computed(() => resolvedAppTheme.value === 'dark')
 const ui = markdownTheme()
-const markdownComponents = { code: InlineCode, input: TaskCheckbox }
+const markdownComponents = computed(() => ({
+  code: InlineCode,
+  input: TaskCheckbox,
+  ...components
+}))
 // The renderer's own tooltip doubles up with ours and does not follow the app's style.
 const uiComponents = { Tooltip: MarkdownTooltip }
 // Copy is the one table action that fits a chat reply; images open in the attachment viewer.
