@@ -86,7 +86,7 @@ export const exportPDF = defineTool({
   description:
     'Export nodes as a vector PDF document. Text remains selectable and keeps its line breaks, paths stay sharp at any zoom. Returns base64-encoded PDF data and the size of each PDF page. ' +
     'mode "single" (default) puts all ids on one PDF page; "frames" makes one PDF page per id (or per top-level frame of the current page); "pages" makes one PDF page per design page (all pages, or page_ids). ' +
-    'embed_fonts embeds the TrueType file of each font face the text uses and reports which faces were embedded and which fell back to a standard PDF font.',
+    'embed_fonts embeds the TrueType file of each font face the text uses, and of a variable font a static file of each instance the text draws (its weight, optical size, and other axes), and reports which faces were embedded and which fell back to a standard PDF font.',
   execution: { kind: 'async', mutation: 'none' },
   exposure: { webmcp: false },
   input: v.strictObject({
