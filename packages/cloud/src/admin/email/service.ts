@@ -1,9 +1,15 @@
 import type { EnrollmentStatus } from '#cloud/admin/enrollment/service'
 import { AdminDomainError } from '#cloud/admin/errors'
-import { ADMIN_LIST_MAXIMUM } from '#cloud/admin/schema'
-import type { CloudDatabase } from '#cloud/server/db'
+import {
+  containsPattern,
+  countEachFilter,
+  listSearch,
+  listWindow,
+  type AdminListQuery
+} from '#cloud/admin/list'
+import { cloudAdminEmailFilterSchema, type CloudAdminEmailFilter } from '#cloud/contract'
+import type { CloudDatabase, TransactionalEmailStatus } from '#cloud/server/db'
 import type { TransactionalEmailService } from '#cloud/server/email'
-import { clamp } from 'es-toolkit'
 import type { Kysely } from 'kysely'
 
 /** The enrollment status each message describes; a message is resent only while it still holds. */
@@ -14,15 +20,36 @@ const ENROLLMENT_MESSAGE_STATUS: Partial<Record<string, EnrollmentStatus>> = {
   'enrollment-revoked': 'revoked'
 }
 
+/** The delivery states each filter shows; every message is under `all`. */
+const FILTER_STATUSES: Record<CloudAdminEmailFilter, readonly TransactionalEmailStatus[] | null> = {
+  all: null,
+  sent: ['accepted'],
+  waiting: ['pending', 'sending'],
+  failed: ['failed']
+}
+
 export function createAdminEmailService(
   database: Kysely<CloudDatabase>,
   email?: TransactionalEmailService,
   links: { publicURL: string } = { publicURL: '' }
 ) {
   return {
-    async list(limit = 100) {
-      const rows = await database
-        .selectFrom('transactionalEmail')
+    /** A page of messages, newest first, with how many match the search under each filter. */
+    async list(query: AdminListQuery<CloudAdminEmailFilter> = {}) {
+      const search = listSearch(query)
+      const filter = query.filter ?? 'all'
+      const { limit, offset } = listWindow(query)
+      const matching = (target: CloudAdminEmailFilter) => {
+        let selection = database.selectFrom('transactionalEmail')
+        const statuses = FILTER_STATUSES[target]
+        if (statuses) selection = selection.where('status', 'in', statuses)
+        if (search) {
+          selection = selection.where('recipientEmailNormalized', 'ilike', containsPattern(search))
+        }
+        return selection
+      }
+      const counts = await countEachFilter(cloudAdminEmailFilterSchema.options, matching)
+      const rows = await matching(filter)
         .select([
           'id',
           'kind',
@@ -37,9 +64,18 @@ export function createAdminEmailService(
           'acceptedAt'
         ])
         .orderBy('createdAt', 'desc')
-        .limit(clamp(limit, 1, ADMIN_LIST_MAXIMUM))
+        .orderBy('id', 'desc')
+        .limit(limit)
+        .offset(offset)
         .execute()
-      return rows.map((row) => ({ ...row, regeneratable: row.kind.startsWith('enrollment-') }))
+      return {
+        messages: rows.map((row) => ({
+          ...row,
+          regeneratable: row.kind.startsWith('enrollment-')
+        })),
+        total: counts[filter],
+        counts
+      }
     },
     async regenerate(actorId: string, messageId: string): Promise<void> {
       if (!email)

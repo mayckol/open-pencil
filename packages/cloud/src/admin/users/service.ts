@@ -1,5 +1,11 @@
 import { AdminDomainError } from '#cloud/admin/errors'
-import { ADMIN_LIST_MAXIMUM } from '#cloud/admin/schema'
+import {
+  containsPattern,
+  countEachFilter,
+  listSearch,
+  listWindow,
+  type AdminListQuery
+} from '#cloud/admin/list'
 import type { CloudAdminUser, CloudAdminUserDetail, CloudAdminUserFilter } from '#cloud/contract'
 import {
   createSignInActivity,
@@ -9,7 +15,7 @@ import {
 import type { CloudDatabase } from '#cloud/server/db'
 import type { UserPictureService } from '#cloud/server/pictures'
 import { dateString } from '#cloud/server/sharing/contracts'
-import { clamp, countBy, keyBy } from 'es-toolkit'
+import { countBy, keyBy } from 'es-toolkit'
 import type { ExpressionBuilder, Kysely } from 'kysely'
 
 /** The sign-ins a person's page lists. */
@@ -21,7 +27,7 @@ type UserExpression = ExpressionBuilder<CloudDatabase, 'user'>
 
 /** A search for part of a name or email, matched literally and without case. */
 function searchCondition(search: string) {
-  const pattern = `%${search.replace(/[\\%_]/g, (character) => `\\${character}`)}%`
+  const pattern = containsPattern(search)
   return (expression: UserExpression) =>
     expression.or([
       expression('user.email', 'ilike', pattern),
@@ -51,12 +57,7 @@ function filterCondition(filter: CloudAdminUserFilter) {
   }
 }
 
-export type AdminUserQuery = {
-  search?: string
-  filter?: CloudAdminUserFilter
-  limit?: number
-  offset?: number
-}
+export type AdminUserQuery = AdminListQuery<CloudAdminUserFilter>
 
 type UserRow = {
   id: string
@@ -187,40 +188,23 @@ export function createAdminUserService(
   return {
     /** A page of accounts in sign-up order, with how many match the search under each filter. */
     async list(query: AdminUserQuery = {}) {
-      const search = query.search?.trim()
+      const search = listSearch(query)
       const filter = query.filter ?? 'all'
+      const { limit, offset } = listWindow(query)
       const matching = (target: CloudAdminUserFilter) => {
         let selection = database.selectFrom('user').where(filterCondition(target))
         if (search) selection = selection.where(searchCondition(search))
         return selection
       }
-      const counts = await Promise.all(
-        FILTERS.map(async (target) => {
-          const row = await matching(target)
-            .select(({ fn }) => fn.countAll<number>().as('count'))
-            .executeTakeFirstOrThrow()
-          return Number(row.count)
-        })
-      )
-      const [all = 0, administrators = 0, suspended = 0, withoutTwoStep = 0] = counts
-      const countsByFilter = {
-        all,
-        administrators,
-        suspended,
-        'without-two-step': withoutTwoStep
-      }
+      const counts = await countEachFilter(FILTERS, matching)
       const rows = await matching(filter)
         .select(userColumns)
         .orderBy('user.createdAt')
         .orderBy('user.id')
-        .limit(clamp(query.limit ?? 50, 1, ADMIN_LIST_MAXIMUM))
-        .offset(Math.max(0, query.offset ?? 0))
+        .limit(limit)
+        .offset(offset)
         .execute()
-      return {
-        users: await accountSummaries(rows),
-        total: countsByFilter[filter],
-        counts: countsByFilter
-      }
+      return { users: await accountSummaries(rows), total: counts[filter], counts }
     },
 
     /** Everything an administrator reads about one account; null when there is none. */

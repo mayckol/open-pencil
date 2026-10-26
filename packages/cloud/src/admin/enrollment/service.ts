@@ -1,5 +1,15 @@
 import { AdminDomainError } from '#cloud/admin/errors'
+import {
+  containsPattern,
+  countEachFilter,
+  listSearch,
+  listWindow,
+  type AdminListQuery
+} from '#cloud/admin/list'
+import { isUUID } from '#cloud/admin/schema'
+import { enrollmentStatusSchema } from '#cloud/contract'
 import type { CloudDatabase } from '#cloud/server/db'
+import { compact, uniq } from 'es-toolkit'
 import type { Kysely } from 'kysely'
 
 import {
@@ -22,6 +32,7 @@ export type EnrollmentRecord = {
   requestedAt: string
   reviewedAt: string | null
   reviewedBy: string | null
+  reviewerName?: string | null
   reviewNote: string | null
   approvedUserId: string | null
   requestRevision: number
@@ -136,10 +147,47 @@ export function createEnrollmentService(
     async isApproved(email: string): Promise<boolean> {
       return (await statusForEmail(email)) === 'approved'
     },
-    async list(status?: EnrollmentStatus): Promise<EnrollmentRecord[]> {
-      let query = database.selectFrom('enrollment').selectAll()
-      if (status) query = query.where('status', '=', status)
-      return (await query.orderBy('requestedAt', 'desc').execute()).map(enrollmentRecord)
+    /** A page of requests in one status, newest first, with how many match the search in each. */
+    async list(query: AdminListQuery<EnrollmentStatus> = {}) {
+      const search = listSearch(query)
+      const status = query.filter ?? 'pending'
+      const { limit, offset } = listWindow(query)
+      const matching = (target: EnrollmentStatus) => {
+        let selection = database.selectFrom('enrollment').where('status', '=', target)
+        if (search) {
+          const pattern = containsPattern(search)
+          selection = selection.where((expression) =>
+            expression.or([
+              expression('name', 'ilike', pattern),
+              expression('emailNormalized', 'ilike', pattern)
+            ])
+          )
+        }
+        return selection
+      }
+      const counts = await countEachFilter(enrollmentStatusSchema.options, matching)
+      const rows = await matching(status)
+        .selectAll()
+        .orderBy('requestedAt', 'desc')
+        .orderBy('id', 'desc')
+        .limit(limit)
+        .offset(offset)
+        .execute()
+      // Reviewers are named by account ID; anything else names no one.
+      const reviewerIds = uniq(compact(rows.map((row) => row.reviewedBy))).filter(isUUID)
+      const reviewers = reviewerIds.length
+        ? await database
+            .selectFrom('user')
+            .select(['id', 'name'])
+            .where('id', 'in', reviewerIds)
+            .execute()
+        : []
+      const names = new Map(reviewers.map((reviewer) => [reviewer.id, reviewer.name]))
+      const enrollments = rows.map((row) => ({
+        ...enrollmentRecord(row),
+        reviewerName: row.reviewedBy ? (names.get(row.reviewedBy) ?? null) : null
+      }))
+      return { enrollments, total: counts[status], counts }
     },
     async review(
       actorId: string,
