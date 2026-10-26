@@ -1,10 +1,8 @@
-import { omit } from 'es-toolkit/object'
-
-import type { Fill, SceneGraph, SceneNode } from '@open-pencil/scene-graph'
+import type { SceneGraph, SceneNode } from '@open-pencil/scene-graph'
 import { copyFills } from '@open-pencil/scene-graph/copy'
 import { parseSVGPath } from '@open-pencil/scene-graph/parse-path'
 
-import { makeBooleanSourcePath, makeStrokeOutlinePath, nodePathTransform } from './boolean'
+import { makeBooleanSourcePath, nodePathTransform } from './boolean'
 import type { SkiaRenderer } from './renderer'
 
 export type VectorFlattenProps = Pick<
@@ -22,8 +20,7 @@ function nodesToVectorProps(
   renderer: SkiaRenderer,
   graph: SceneGraph,
   nodes: SceneNode[],
-  makeNodePath: NodePathFactory,
-  paintOf: (node: SceneNode) => Fill[] = (node) => node.fills
+  makeNodePath: NodePathFactory
 ): VectorFlattenProps | null {
   const path = new renderer.ck.PathBuilder()
   for (const node of nodes) {
@@ -53,7 +50,7 @@ function nodesToVectorProps(
     y: bounds[1],
     width: bounds[2] - bounds[0],
     height: bounds[3] - bounds[1],
-    fills: copyFills(paintOf(nodes[0])),
+    fills: copyFills(nodes[0].fills),
     vectorNetwork
   }
 }
@@ -65,27 +62,5 @@ export function flattenNodesToVectorProps(
 ): VectorFlattenProps | null {
   return nodesToVectorProps(renderer, graph, nodes, (r, g, node) =>
     makeBooleanSourcePath(r, node, g)
-  )
-}
-
-/** A layer's strokes as the fills of its outline, which paints what the strokes painted. */
-function strokePaints(node: SceneNode): Fill[] {
-  return node.strokes.map((stroke) =>
-    omit(stroke, ['weight', 'align', 'cap', 'join', 'dashPattern'])
-  )
-}
-
-/** Strokes as filled outlines, painted with the strokes and shaped as the canvas draws them. */
-export function outlineStrokeNodesToVectorProps(
-  renderer: SkiaRenderer,
-  graph: SceneGraph,
-  nodes: SceneNode[]
-): VectorFlattenProps | null {
-  return nodesToVectorProps(
-    renderer,
-    graph,
-    nodes,
-    (r, g, node) => makeStrokeOutlinePath(r, node, g),
-    strokePaints
   )
 }
