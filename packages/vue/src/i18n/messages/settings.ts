@@ -32,6 +32,13 @@ export const settingsMessageDefaults = {
   title: 'Settings',
   description: 'Manage integrations and app preferences.',
   general: 'General',
+  groupApp: 'App',
+  groupAI: 'AI',
+  groupDataAndPrivacy: 'Data & privacy',
+  editor: 'Editor',
+  accountAndStorage: 'Account & storage',
+  models: 'Models',
+  imageServices: 'Image services',
   recentFiles: 'Recent files',
   recentFilesDescription: 'Choose how many files to keep in the recent list and Open Recent menu.',
   recentFilesLimit: 'Number of recent files',
@@ -49,11 +56,8 @@ export const settingsMessageDefaults = {
   snapToPixelGridDescription:
     'Align vector points, moved layers, and resized edges to whole pixels.',
   temporaryDisableSnappingHint: 'Hold Control while dragging to temporarily disable snapping.',
-  aiAndAgents: 'AI & agents',
   usage: 'Usage',
-  diagnostics: 'Diagnostics',
   privacy: 'Privacy',
-  fonts: 'Fonts',
   media: 'Media',
   mcp: 'MCP',
   toolAccess: 'Tool access',
@@ -79,7 +83,6 @@ export const settingsMessageDefaults = {
   keepEditing: 'Keep editing',
   discard: 'Discard',
   storage: 'Storage',
-  cloud: 'Cloud',
   mobilePanelNavigation: 'Mobile panel navigation',
   notifications: 'Notifications'
 } as const

@@ -207,7 +207,6 @@ ja:rendering.reloadRequired
 ja:rendering.settingsDescription
 ja:rendering.urlOverride
 ja:rendering.wideGamutUnavailable
-ja:settings.aiAndAgents
 ja:settings.baseURLHint
 ja:settings.invalidURL
 ja:settings.modelIDHint
@@ -427,7 +426,6 @@ zh-cn:rendering.reloadRequired
 zh-cn:rendering.settingsDescription
 zh-cn:rendering.urlOverride
 zh-cn:rendering.wideGamutUnavailable
-zh-cn:settings.aiAndAgents
 zh-cn:settings.baseURLHint
 zh-cn:settings.invalidURL
 zh-cn:settings.temporaryDisableSnappingHint
