@@ -5,7 +5,8 @@ import { SkiaRenderer } from '@open-pencil/core/canvas'
 import { initCanvasKit } from '@open-pencil/core/io/formats/raster'
 import { fontManager } from '@open-pencil/core/text'
 import { vectorNetworkToPath } from '@open-pencil/core/vector'
-import type { Color, Effect, SceneNode, Stroke } from '@open-pencil/scene-graph'
+import type { Effect, SceneNode, Stroke } from '@open-pencil/scene-graph'
+import type { Color } from '@open-pencil/scene-graph/primitives'
 
 // Figma's Outline stroke (⇧⌘O), measured live: each stroked layer becomes its fill, "<name>", under
 // "<name> (Stroke)", painted with the stroke where it is drawn; both keep the layer's turn,
@@ -156,7 +157,7 @@ describe('outlineStrokeSelected', () => {
       expect(layer?.effects).toEqual([shadow])
     }
     // Figma's outline of this stroke is 108 × 68, turned with the ellipse.
-    expect([outline?.width, outline?.height].map(Math.round)).toEqual([108, 68])
+    expect([outline?.width ?? 0, outline?.height ?? 0].map(Math.round)).toEqual([108, 68])
   })
 
   test('outlines each layer of a selection and inside a group or frame in place', async () => {
