@@ -1,19 +1,69 @@
 <script setup lang="ts">
+import { createColumnHelper } from '@tanstack/vue-table'
 import { computed } from 'vue'
 
+import type { CloudAdminEmailFilter } from '@open-pencil/cloud/contract'
 import { useCloudPortalMessages } from '@open-pencil/vue/i18n'
 
+import {
+  usePortalList,
+  type PortalTableFeatures,
+  type PortalListPage,
+  type PortalListRequest
+} from '@/app/cloud-portal/list'
 import AppButton from '@/components/ui/button/AppButton.vue'
 import { portalList } from '@/theme/cloud-portal/list'
 
 import type { PortalEmail } from '../types'
+import PortalTable from './PortalTable.vue'
 
 /** Email the server sends, such as invitations and sign-in links, and whether it went out. */
-const { emails, busy = null } = defineProps<{ emails: PortalEmail[]; busy?: string | null }>()
+const { load, busy = null } = defineProps<{
+  load: (
+    request: PortalListRequest<CloudAdminEmailFilter>
+  ) => Promise<PortalListPage<CloudAdminEmailFilter, PortalEmail>>
+  /** The message being sent again. */
+  busy?: string | null
+}>()
 const emit = defineEmits<{ retry: [id: string] }>()
 
 const ui = portalList()
 const messages = useCloudPortalMessages()
+const column = createColumnHelper<PortalTableFeatures, PortalEmail>()
+const emails = usePortalList<CloudAdminEmailFilter, PortalEmail>({
+  filter: 'all',
+  load: (request) => load(request),
+  rowId: (email) => email.id,
+  columns: [
+    column.display({ id: 'message', header: () => messages.value.columnMessage }),
+    column.display({
+      id: 'recipient',
+      header: () => messages.value.columnRecipient,
+      meta: { class: 'hidden @xl/data-table:table-cell' }
+    }),
+    column.display({
+      id: 'status',
+      header: () => messages.value.columnStatus,
+      meta: { class: 'w-32' }
+    }),
+    column.display({
+      id: 'when',
+      header: () => messages.value.columnWhen,
+      meta: { class: 'hidden w-44 whitespace-nowrap text-muted @2xl/data-table:table-cell' }
+    }),
+    column.display({
+      id: 'actions',
+      header: () => messages.value.columnActions,
+      meta: { class: 'w-px text-right', headerHidden: true }
+    })
+  ]
+})
+const filters = computed(() => [
+  { value: 'all' as const, label: messages.value.filterAll },
+  { value: 'sent' as const, label: messages.value.emailSent },
+  { value: 'waiting' as const, label: messages.value.emailWaiting },
+  { value: 'failed' as const, label: messages.value.emailFailed }
+])
 const tones = {
   sent: 'success',
   waiting: 'neutral',
@@ -41,36 +91,54 @@ const kindLabels = computed<Record<string, string>>(() => ({
   'new-sign-in': messages.value.emailKindNewSignIn,
   'two-step-changed': messages.value.emailKindTwoStepChanged
 }))
-function detail(email: PortalEmail) {
-  const to = messages.value.emailTo({ recipient: email.recipient })
-  if (email.error) return `${to} · ${email.error}`
-  return email.attempts > 1 ? `${to} · ${messages.value.attempts(email.attempts)}` : to
+/** What went wrong, or how many tries it took. */
+function delivery(email: PortalEmail) {
+  if (email.error) return email.error
+  return email.attempts > 1 ? messages.value.attempts(email.attempts) : null
 }
+
+defineExpose({ reload: emails.reload })
 </script>
 
 <template>
-  <ul :class="ui.list()">
-    <li v-for="email in emails" :key="email.id" :class="ui.row()">
-      <icon-lucide-mail class="size-4 shrink-0 text-muted" />
-      <div :class="ui.body()">
+  <PortalTable
+    :list="emails"
+    :label="messages.emailDelivery"
+    :search-label="messages.searchEmail"
+    :filters="filters"
+    :empty-label="messages.noEmailFound"
+    :empty-description="messages.noEmailFoundDescription"
+  >
+    <template #icon><icon-lucide-mail class="size-5" /></template>
+    <template #message="{ row: email }">
+      <div class="min-w-0">
         <p :class="ui.title()">{{ kindLabels[email.kind] ?? messages.emailKindOther }}</p>
-        <p :class="ui.detail()">{{ detail(email) }}</p>
+        <!-- The recipient has its own column once the table is wide enough. -->
+        <p :class="[ui.detail(), '@xl/data-table:hidden']">{{ email.recipient }}</p>
       </div>
-      <span :class="ui.status()" :data-tone="tones[email.status]">
-        {{ statusLabels[email.status] }}
-      </span>
-      <span :class="ui.meta()">{{ email.when }}</span>
-      <div :class="[ui.actions(), 'w-16 justify-end']">
-        <AppButton
-          v-if="email.status === 'failed'"
-          size="sm"
-          variant="outline"
-          :loading="busy === email.id"
-          @click="emit('retry', email.id)"
-        >
-          {{ messages.retry }}
-        </AppButton>
+    </template>
+    <template #recipient="{ row: email }">
+      <span class="block truncate text-muted">{{ email.recipient }}</span>
+    </template>
+    <template #status="{ row: email }">
+      <div class="flex flex-col items-start gap-0.5">
+        <span :class="ui.status()" :data-tone="tones[email.status]">
+          {{ statusLabels[email.status] }}
+        </span>
+        <span v-if="delivery(email)" :class="ui.detail()">{{ delivery(email) }}</span>
       </div>
-    </li>
-  </ul>
+    </template>
+    <template #when="{ row: email }">{{ email.when }}</template>
+    <template #actions="{ row: email }">
+      <AppButton
+        v-if="email.status === 'failed'"
+        size="sm"
+        variant="outline"
+        :loading="busy === email.id"
+        @click="emit('retry', email.id)"
+      >
+        {{ messages.retry }}
+      </AppButton>
+    </template>
+  </PortalTable>
 </template>

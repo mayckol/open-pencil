@@ -1,15 +1,18 @@
 <script setup lang="ts">
+import { createColumnHelper } from '@tanstack/vue-table'
 import { compact } from 'es-toolkit'
 import { computed } from 'vue'
 
 import type { WorkspaceRole } from '@open-pencil/cloud/contract'
 import { useCloudPortalMessages } from '@open-pencil/vue/i18n'
 
+import { usePortalRows, type PortalTableFeatures } from '@/app/cloud-portal/list'
 import AccountAvatar from '@/components/presence/AccountAvatar.vue'
 import SettingsGroup from '@/components/settings/layout/SettingsGroup.vue'
 import SettingsRow from '@/components/settings/layout/SettingsRow.vue'
 import SettingsSection from '@/components/settings/layout/SettingsSection.vue'
 import AppButton from '@/components/ui/button/AppButton.vue'
+import AppDataTable from '@/components/ui/table/AppDataTable.vue'
 import { portalList } from '@/theme/cloud-portal/list'
 
 import PortalSessions from '../account/PortalSessions.vue'
@@ -45,6 +48,23 @@ const twoStep = computed(() => {
     detail.passkeyCount ? words.passkeyCount(detail.passkeyCount) : null
   ])
   return parts.length ? parts.join(' · ') : words.twoStepNone
+})
+const column = createColumnHelper<PortalTableFeatures, PortalPersonDetail['workspaces'][number]>()
+const workspaces = usePortalRows(() => detail.workspaces, {
+  rowId: (workspace) => workspace.id,
+  columns: [
+    column.display({ id: 'workspace', header: () => messages.value.columnWorkspace }),
+    column.display({
+      id: 'role',
+      header: () => messages.value.columnRole,
+      meta: { class: 'w-32' }
+    }),
+    column.display({
+      id: 'members',
+      header: () => messages.value.columnMembers,
+      meta: { class: 'w-24 text-right tabular-nums' }
+    })
+  ]
 })
 const roleLabel = (role: WorkspaceRole) =>
   ({
@@ -114,19 +134,21 @@ const roleLabel = (role: WorkspaceRole) =>
 
     <SettingsSection>
       <template #title>{{ messages.personWorkspaces }}</template>
-      <ul v-if="detail.workspaces.length" :class="ui.list()">
-        <li v-for="workspace in detail.workspaces" :key="workspace.id" :class="ui.row()">
-          <icon-lucide-layers class="size-4 shrink-0 text-muted" />
-          <div :class="ui.body()">
-            <p :class="ui.title()">{{ workspace.name }}</p>
-            <p :class="ui.detail()">{{ messages.workspaceMembers(workspace.memberCount) }}</p>
+      <AppDataTable :table="workspaces" :label="messages.personWorkspaces">
+        <template #workspace="{ row: workspace }">
+          <div class="flex min-w-0 items-center gap-3">
+            <icon-lucide-layers class="size-4 shrink-0 text-muted" />
+            <span :class="ui.title()">{{ workspace.name }}</span>
           </div>
+        </template>
+        <template #role="{ row: workspace }">
           <span :class="ui.status()" data-tone="neutral">{{ roleLabel(workspace.role) }}</span>
-        </li>
-      </ul>
-      <p v-else class="rounded border border-dashed border-border px-3 py-3 text-xs text-muted">
-        {{ messages.personWorkspacesEmpty }}
-      </p>
+        </template>
+        <template #members="{ row: workspace }">{{ workspace.memberCount }}</template>
+        <template #empty>
+          <p class="text-center text-xs text-muted">{{ messages.personWorkspacesEmpty }}</p>
+        </template>
+      </AppDataTable>
     </SettingsSection>
 
     <PortalSessions :sessions="detail.sessions" :sign-ins="detail.signIns" />
