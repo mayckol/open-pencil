@@ -71,11 +71,11 @@ export const exportSVG = defineTool({
   exposure: { webmcp: false },
   input: v.strictObject({ ...exportInputs }),
   execute: async (figma, args) => {
-    const { renderNodesToSVG } = await import('#core/io/formats/svg')
+    const { renderNodesToLaidOutSVG } = await import('#core/io/formats/svg/text/layout')
     const pageId = figma.currentPageId
     const ids =
       args.ids && args.ids.length > 0 ? args.ids : figma.currentPage.children.map((node) => node.id)
-    const svg = renderNodesToSVG(figma.graph, pageId, ids)
+    const svg = await renderNodesToLaidOutSVG(figma.graph, pageId, ids)
     if (!svg) return { error: 'No visible nodes to export' }
     return { svg }
   }
@@ -117,9 +117,10 @@ export const exportPDF = defineTool({
     )
   }),
   execute: async (figma, args) => {
-    const [{ renderPagesToPDFDetailed }, pdfPrepare] = await Promise.all([
+    const [{ renderPagesToPDFDetailed }, pdfPrepare, { withTextLayout }] = await Promise.all([
       import('#core/io/formats/pdf'),
-      import('#core/io/formats/pdf/prepare')
+      import('#core/io/formats/pdf/prepare'),
+      import('#core/io/formats/svg/text/layout')
     ])
     try {
       if (args.mode === 'pages') pdfPrepare.readPDFPages(figma.graph, args.page_ids)
@@ -134,7 +135,7 @@ export const exportPDF = defineTool({
           ? await pdfPrepare.preparePagesForPDF(figma.graph, specs)
           : await pdfPrepare.preparePDFFonts(figma.graph, specs)
       const fonts = args.embed_fonts ? pdfPrepare.pdfFontFaces(fontStatus) : undefined
-      const result = await pdfPrepare.withPDFTextLayout((textLayout) =>
+      const result = await withTextLayout((textLayout) =>
         renderPagesToPDFDetailed(figma.graph, specs, { fonts, textLayout })
       )
       if (!result || result.data.length === 0) return { error: 'No visible nodes to export' }

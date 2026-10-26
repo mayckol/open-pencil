@@ -5,8 +5,9 @@ import { expectDefined } from '#core-tests/helpers/assert'
 import { SceneGraph } from '@open-pencil/scene-graph'
 import { pixelLength } from '@open-pencil/scene-graph/text'
 
-import { withPDFTextLayout } from '#core/io/formats/pdf/prepare'
+import { BUILTIN_IO_FORMATS, IORegistry } from '#core/io'
 import { renderNodesToSVG } from '#core/io/formats/svg'
+import { withTextLayout } from '#core/io/formats/svg/text/layout'
 import { fontManager } from '#core/text/fonts'
 
 const SENTENCE = 'A sentence long enough that it has to wrap onto a second line.'
@@ -16,7 +17,7 @@ beforeAll(async () => {
   await fontManager.markLoaded('Inter', 'Regular', inter)
 })
 
-test('a paragraph wrapped on the canvas keeps its lines in the SVG drawn into a PDF', async () => {
+test('a paragraph wrapped on the canvas keeps its lines in SVG and PDF', async () => {
   const graph = new SceneGraph()
   const pageId = graph.getPages()[0].id
   const node = graph.createNode('TEXT', pageId, {
@@ -29,7 +30,7 @@ test('a paragraph wrapped on the canvas keeps its lines in the SVG drawn into a 
     textAutoResize: 'HEIGHT'
   })
 
-  const svg = await withPDFTextLayout(async (textLayout) => {
+  const svg = await withTextLayout(async (textLayout) => {
     const lines = expectDefined(textLayout?.(node), 'text lines')
     expect(lines).toHaveLength(2)
     expect(lines[1].start).toBe(lines[0].end)
@@ -55,7 +56,7 @@ test('a style run that starts mid-word is placed where the canvas draws its firs
     styleRuns: [{ start: 1, length: 3, style: { letterSpacing: pixelLength(4) } }]
   })
 
-  const svg = await withPDFTextLayout(async (textLayout) => {
+  const svg = await withTextLayout(async (textLayout) => {
     const [line] = expectDefined(textLayout?.(node), 'text lines')
     const o = expectDefined(line.characters?.get(1), 'edges of "o"')
     const b = expectDefined(line.characters?.get(0), 'edges of "B"')
@@ -80,10 +81,35 @@ test('text whose case changes its length is kept on one line, in that case', asy
     height: 24
   })
 
-  const svg = await withPDFTextLayout(async (textLayout) => {
+  const svg = await withTextLayout(async (textLayout) => {
     expect(textLayout?.(node)).toBeNull()
     return renderNodesToSVG(graph, pageId, [node.id], { xmlDeclaration: false, textLayout })
   })
 
   expect(expectDefined(svg, 'SVG')).toContain('>STRASSE</text>')
+})
+
+test('an SVG export sets text on the canvas baselines, a wrapped paragraph on its lines', async () => {
+  const graph = new SceneGraph()
+  const pageId = graph.getPages()[0].id
+  const node = graph.createNode('TEXT', pageId, {
+    text: SENTENCE,
+    fontFamily: 'Inter',
+    fontSize: 13,
+    lineHeight: pixelLength(24),
+    width: 230,
+    height: 48,
+    textAutoResize: 'HEIGHT'
+  })
+  const io = new IORegistry(BUILTIN_IO_FORMATS)
+  const result = await io.exportContent('svg', {
+    graph,
+    target: { scope: 'node', nodeId: node.id }
+  })
+  if (typeof result.data !== 'string') throw new Error('Expected SVG markup')
+  const baselines = [...result.data.matchAll(/<tspan [^>]*y="([\d.]+)"/g)].map(([, y]) => Number(y))
+  // Two 24 px lines, each baseline below half the leading and the font's ascent, not at 13.
+  expect(baselines).toHaveLength(2)
+  expect(baselines[0]).toBeGreaterThan(13)
+  expect(baselines[1] - baselines[0]).toBeCloseTo(24)
 })
