@@ -121,14 +121,3 @@ export async function renderPagesToPDFDetailed(
     ...(embedding ? { fonts: embedding.report } : {})
   }
 }
-
-/** One PDF page holding all `nodeIds`. */
-export async function renderNodesToPDF(
-  graph: SceneGraph,
-  pageId: string,
-  nodeIds: string[],
-  options: PDFExportOptions = {}
-): Promise<Uint8Array | null> {
-  const result = await renderPagesToPDFDetailed(graph, [{ pageId, nodeIds }], options)
-  return result?.data ?? null
-}
