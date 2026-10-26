@@ -1,25 +1,11 @@
 import { tv } from 'tailwind-variants'
 
+import type { ComponentUI } from '@/components/ui/types'
 import tableTheme from '@/theme/table/index'
 
 export const table = tv(tableTheme)
 
-export interface TableUI {
-  root?: string
-  scroller?: string
-  table?: string
-  header?: string
-  head?: string
-  body?: string
-  row?: string
-  cell?: string
-  empty?: string
-  refresh?: string
-  footer?: string
-  pagination?: string
-  range?: string
-  pages?: string
-}
+export type TableUI = ComponentUI<typeof tableTheme>
 
 export function useTableUI(ui?: TableUI) {
   const cls = table()

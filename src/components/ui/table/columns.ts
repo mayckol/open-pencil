@@ -4,8 +4,8 @@
  */
 export type TableColumnMeta = {
   class?: string
-  /** The header is read out but not shown, as for a column of row actions. */
-  headerHidden?: boolean
+  /** A column of row actions: its header is read out but not shown, and it has no placeholder. */
+  actions?: boolean
 }
 
 /** A column's meta as `TableColumnMeta`, whatever features its table was made with. */
@@ -13,6 +13,6 @@ export function tableColumnMeta(meta: unknown): TableColumnMeta {
   if (typeof meta !== 'object' || meta === null) return {}
   return {
     class: 'class' in meta && typeof meta.class === 'string' ? meta.class : undefined,
-    headerHidden: 'headerHidden' in meta && meta.headerHidden === true
+    actions: 'actions' in meta && meta.actions === true
   }
 }

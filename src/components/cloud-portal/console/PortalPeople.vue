@@ -96,7 +96,7 @@ const people = usePortalList<CloudAdminUserFilter, PortalPerson>({
     column.display({
       id: 'actions',
       header: () => messages.value.columnActions,
-      meta: { class: 'w-px text-right', headerHidden: true },
+      meta: { class: 'w-px text-right', actions: true },
       cell: ({ row: { original: person } }) =>
         h(PortalPersonActions, {
           person,

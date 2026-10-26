@@ -47,7 +47,7 @@ const rows = computed(() =>
 const columns = computed(() =>
   (headers.value.at(-1)?.headers ?? []).map((header) => {
     const meta = tableColumnMeta(header.column.columnDef.meta)
-    return { id: header.column.id, class: meta.class, actions: meta.headerHidden }
+    return { id: header.column.id, class: meta.class, actions: meta.actions }
   })
 )
 </script>
@@ -60,7 +60,7 @@ const columns = computed(() =>
           v-for="header in group.headers"
           :key="header.id"
           :colspan="header.colSpan"
-          :label-hidden="tableColumnMeta(header.column.columnDef.meta).headerHidden"
+          :label-hidden="tableColumnMeta(header.column.columnDef.meta).actions"
           :class="tableColumnMeta(header.column.columnDef.meta).class"
         >
           <FlexRender v-if="!header.isPlaceholder" :header="header" />
