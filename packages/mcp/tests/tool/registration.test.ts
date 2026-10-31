@@ -37,7 +37,7 @@ async function server(results: Record<string, unknown>) {
     serverVersion: '0.0.0',
     registerTools: (mcpServer, agentSession, onToolSettled) =>
       registerTools(mcpServer, {
-        policy: { allowEval: false, disabledTools: [], scope: 'document' },
+        policy: { allowEval: false, disabledTools: [], scope: 'document', mode: 'tools' },
         agentSession,
         onToolSettled,
         mcpRoot: root,

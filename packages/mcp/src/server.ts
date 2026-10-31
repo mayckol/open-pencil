@@ -84,6 +84,7 @@ export interface ServerOptions {
   disabledTools?: Iterable<string>
   /** What clients can reach: the whole document (default) or only the user's selection. */
   scope?: MCPToolScope
+  mode?: ToolPolicy['mode']
   mcpRoot?: string | null
   /** Auth token for /mcp and /rpc endpoints. Auto-generated (32-hex) when omitted. Pass null explicitly to disable auth. */
   authToken?: string | null
@@ -317,7 +318,8 @@ function buildServerContext(options: ServerOptions) {
   const toolPolicy: ToolPolicy = {
     allowEval: options.enableEval ?? false,
     disabledTools: [...new Set(options.disabledTools)],
-    scope: options.scope ?? 'document'
+    scope: options.scope ?? 'document',
+    mode: options.mode ?? 'tools'
   }
   const mcpRoot = options.mcpRoot ?? null
   // Auto-generated so all transports require auth by default. Override via OPENPENCIL_MCP_AUTH_TOKEN or authToken option.

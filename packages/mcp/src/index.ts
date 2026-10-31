@@ -94,6 +94,7 @@ const handle = await startServer({
   enableEval: toolPolicy.allowEval,
   disabledTools: toolPolicy.disabledTools,
   scope: toolPolicy.scope,
+  mode: toolPolicy.mode,
   mcpRoot: resolveMCPRoot(process.env.OPENPENCIL_MCP_ROOT),
   // Auth token: undefined → auto-generate, empty string → disable auth,
   // non-empty → use trimmed value. Whitespace-only is rejected to prevent a

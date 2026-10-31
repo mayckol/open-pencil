@@ -193,7 +193,7 @@ describe('MCP idle expiration', () => {
       sessionIdleTimeoutMs: 1000,
       registerTools: (server, agentSession, onToolSettled) =>
         registerTools(server, {
-          policy: { allowEval: false, disabledTools: [], scope: 'document' },
+          policy: { allowEval: false, disabledTools: [], scope: 'document', mode: 'tools' },
           agentSession,
           onToolSettled,
           sendRPC: async () => {

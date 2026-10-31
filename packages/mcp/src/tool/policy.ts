@@ -1,6 +1,7 @@
 import { compact, uniq } from 'es-toolkit/array'
 
 import type { ToolDescriptor, ToolPolicy } from '#mcp/tool/metadata'
+import { parseToolMode } from '#mcp/tool/mode'
 import { isSelectionScopeTool, parseToolScope } from '#mcp/tool/scope'
 
 export function parseDisabledTools(value: string | undefined): string[] {
@@ -32,6 +33,7 @@ export function readToolPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): Too
   return {
     allowEval: env.OPENPENCIL_MCP_EVAL === '1',
     disabledTools: parseDisabledTools(env.OPENPENCIL_MCP_DISABLED_TOOLS),
-    scope: parseToolScope(env.OPENPENCIL_MCP_SCOPE)
+    scope: parseToolScope(env.OPENPENCIL_MCP_SCOPE),
+    mode: parseToolMode(env.OPENPENCIL_MCP_MODE)
   }
 }

@@ -7,12 +7,14 @@ import type {
   ToolAnnotations,
   ServerContext
 } from '@modelcontextprotocol/server'
+import { isCallToolResult } from '@modelcontextprotocol/server'
 // eslint-disable-next-line open-pencil/no-mixed-case-acronym-identifiers -- Upstream export spelling.
 import { toStandardJsonSchema as toStandardJSONSchema } from '@valibot/to-json-schema'
 import * as v from 'valibot'
 
 import { CODEGEN_PROMPT } from '@open-pencil/core/tools'
 
+import { registerCodeTools, type CodeModeTool } from '#mcp/code/tools'
 import type { RPCJSONObject } from '#mcp/json'
 import { MAX_RESULT_BYTES, fail, ok, resultTooLargeMessage } from '#mcp/result'
 import { createToolDescriptors, getMCPToolDefinitions } from '#mcp/tool/manifest'
@@ -122,6 +124,8 @@ export function registerTools(mcpServer: McpServer, options: RegisterToolsOption
   }
   const resolvedRoot = options.mcpRoot ? resolve(options.mcpRoot) : null
   const descriptors = descriptorByName(createToolDescriptors(resolvedRoot !== null))
+  // In Code Mode the handlers become `openpencil.<name>` methods instead of MCP tools.
+  const codeModeTools: CodeModeTool[] = []
   const register = <InputArgs extends v.GenericSchema>(
     name: string,
     toolOptions: { description?: string; inputSchema: InputArgs },
@@ -130,6 +134,22 @@ export function registerTools(mcpServer: McpServer, options: RegisterToolsOption
     const descriptor = descriptors.get(name)
     if (!descriptor) throw new Error(`Missing MCP tool descriptor for "${name}"`)
     if (!isToolEnabled(descriptor, policy)) return
+    if (policy.mode === 'code') {
+      codeModeTools.push({
+        name,
+        description: toolOptions.description ?? descriptor.description,
+        inputSchema: toolOptions.inputSchema,
+        // The SDK validated a tool call's arguments; Code Mode validates them against this schema.
+        run: async (args, context) => {
+          const result = await handler(args, context)
+          if (!isCallToolResult(result)) {
+            throw new Error(`${name} asked for input Code Mode cannot give`)
+          }
+          return result
+        }
+      })
+      return
+    }
     mcpServer.registerTool(
       name,
       {
@@ -498,4 +518,8 @@ export function registerTools(mcpServer: McpServer, options: RegisterToolsOption
     },
     async () => ok({ prompt: CODEGEN_PROMPT })
   )
+
+  if (policy.mode === 'code') {
+    registerCodeTools(mcpServer, codeModeTools, { onToolSettled: options.onToolSettled })
+  }
 }

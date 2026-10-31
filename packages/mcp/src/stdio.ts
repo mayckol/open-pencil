@@ -8,6 +8,7 @@ import { resolveMCPRoot } from '#mcp/root'
 import { MCP_VERSION, registerTools } from '#mcp/server'
 import { createStdioRPCBridge } from '#mcp/stdio/bridge'
 import type { ToolPolicy } from '#mcp/tool/metadata'
+import { parseToolMode } from '#mcp/tool/mode'
 import { parseDisabledTools } from '#mcp/tool/policy'
 import { narrowestScope, parseToolScope } from '#mcp/tool/scope'
 import { readDiscoveryFile } from '#mcp/transport/discovery'
@@ -35,7 +36,8 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
       `                               (default: home directory on Windows, cwd elsewhere)\n` +
       `  OPENPENCIL_MCP_EVAL          Set to 1 to enable the eval tool\n` +
       `  OPENPENCIL_MCP_DISABLED_TOOLS Comma-separated tool names to omit; defaults to the app setting\n` +
-      `  OPENPENCIL_MCP_SCOPE         "selection" to read only the selected layers; defaults to the app setting\n`
+      `  OPENPENCIL_MCP_SCOPE         "selection" to read only the selected layers; defaults to the app setting\n` +
+      `  OPENPENCIL_MCP_MODE          "code" for Code Mode: search and execute in place of one tool per operation\n`
   )
   process.exit(0)
 }
@@ -52,7 +54,8 @@ const toolPolicy: ToolPolicy = {
   scope: narrowestScope(
     discovery?.scope ?? 'document',
     parseToolScope(process.env.OPENPENCIL_MCP_SCOPE)
-  )
+  ),
+  mode: parseToolMode(process.env.OPENPENCIL_MCP_MODE)
 }
 const mcpRoot = resolveMCPRoot(process.env.OPENPENCIL_MCP_ROOT)
 // Auth token: undefined → auto-discover from discovery file, empty string →

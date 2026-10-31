@@ -23,6 +23,19 @@ Turn on **Share only the selection** in **Settings → MCP → Local server** to
 
 The server enforces this on every call it sends to the app, including `POST /rpc` and stdio clients, so a client cannot widen it. Restart the MCP server to apply the change. For a server you start yourself, set `OPENPENCIL_MCP_SCOPE=selection`; a stdio client can also set it to limit itself while the server shares the whole document.
 
+## Code Mode (experimental) {#code-mode}
+
+Set `OPENPENCIL_MCP_MODE=code` to offer clients two tools in place of one per operation, after [Cloudflare's Code Mode](https://blog.cloudflare.com/code-mode/): `search` finds operations and returns their TypeScript signatures, and `execute` runs a script that calls them as `await openpencil.<tool>(args)`, many in one round trip. The tool list a client loads shrinks from about 130 KB to about 3 KB.
+
+```js
+const page = await openpencil.get_current_page()
+const frame = await openpencil.create_shape({ type: 'FRAME', x: 0, y: 0, width: 320, height: 200 })
+await openpencil.set_fill({ id: frame.id, color: '#4f46e5' })
+return { page, frame }
+```
+
+Scripts run in a QuickJS WebAssembly sandbox without filesystem, network, or Node APIs, and stop after 60 seconds. Each call goes through the same handler, argument validation, Tool access settings, selection scope, and file-root checks as the tool it names. The default, `OPENPENCIL_MCP_MODE=tools`, keeps one MCP tool per operation.
+
 ## Browser-native WebMCP (experimental) {#webmcp}
 
 WebMCP is **off by default**. Open **Settings → MCP → WebMCP** and choose **Inspect** for read-only access or **Edit** to also allow scoped, undoable changes. **Off** unregisters all browser tools; changing modes revokes the previous registrations immediately. This preference is independent of local MCP authentication, tool switches, and outbound connections.

@@ -27,7 +27,12 @@ describe('MCP tool scope', () => {
   })
 
   test('keeps only the selection tools in selection scope', () => {
-    const policy = { allowEval: false, disabledTools: ['describe'], scope: 'selection' as const }
+    const policy = {
+      allowEval: false,
+      disabledTools: ['describe'],
+      scope: 'selection' as const,
+      mode: 'tools' as const
+    }
     expect(isToolEnabled(tool('get_node'), policy)).toBe(true)
     expect(isToolEnabled(tool('delete_node'), policy)).toBe(false)
     expect(isToolEnabled(tool('list_documents'), policy)).toBe(false)

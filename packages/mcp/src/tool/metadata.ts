@@ -2,6 +2,7 @@ import * as v from 'valibot'
 
 import type { ToolCapability } from '@open-pencil/core/tools'
 
+import type { MCPToolMode } from '#mcp/tool/mode'
 import type { MCPToolScope } from '#mcp/tool/scope'
 
 const TOOL_EFFECTS = ['read', 'write'] as const
@@ -36,6 +37,8 @@ export interface ToolPolicy {
   disabledTools: string[]
   /** What clients can reach; see `MCPToolScope`. */
   scope: MCPToolScope
+  /** One MCP tool per operation, or Code Mode; see `MCPToolMode`. */
+  mode: MCPToolMode
 }
 
 export function parseToolDescriptor(value: unknown): ToolDescriptor | null {
